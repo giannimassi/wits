@@ -1,0 +1,23 @@
+{
+  "skill_name": "recruit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/recruit list",
+      "expected_output": "Shows core team (3 experts) and domain experts table (1 PostgreSQL specialist from test). Clean formatted output.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "/recruit search database",
+      "expected_output": "Finds the PostgreSQL migration specialist. Offers to load it or create a new one.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "/recruit create a Kubernetes deployment specialist with deep knowledge of Helm charts and ArgoCD",
+      "expected_output": "Creates a new expert persona file at knowledge/experts/kubernetes-deployment-specialist.md with proper frontmatter, persona prompt, and research context. Updates INDEX.md.",
+      "files": []
+    }
+  ]
+}

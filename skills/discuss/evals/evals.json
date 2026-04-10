@@ -1,0 +1,29 @@
+{
+  "skill_name": "discuss",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/discuss Should we migrate our PostgreSQL database to DynamoDB for our user service? We have about 50GB of data, mostly relational with some JSON columns. --mode converge --duration 5m",
+      "expected_output": "Intake asks 1-2 clarifying questions. Recruits 2 domain experts (database/migration). Discussion runs with facilitator-directed turns. Convergence reached via NGT voting. Output includes decision, rationale, dissent, confidence score.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "/discuss What are the implications of AI agents having persistent memory across conversations? Think about privacy, emergent behavior, and the relationship between human and AI. --duration 10m",
+      "expected_output": "Exploration mode (default). Recruits 2-3 experts (AI ethics, cognitive science, systems design). Discussion follows diverse threads. Facilitator allows tangents. Synthesis produces ideas map, key insights, open questions, surprising connections.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "/discuss How should we structure authentication for our microservices? --mode converge --size 0 --duration 5m",
+      "expected_output": "Core team only (--size 0, no domain experts). Intake may ask about current auth setup. Discussion is focused with 3 agents. Convergence with NGT voting among core team.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "/discuss What makes a great engineering culture? --duration 8m --models all-sonnet",
+      "expected_output": "Exploration mode. All-sonnet model assignment (experts on Sonnet, core team stays Opus per spec). Broad topic should recruit 2-3 diverse experts. Rich exploration with multiple threads.",
+      "files": []
+    }
+  ]
+}

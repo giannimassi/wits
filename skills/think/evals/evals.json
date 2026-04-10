@@ -1,0 +1,23 @@
+{
+  "skill_name": "thinking-tools",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to decide whether to accept a job offer. The new role pays 30% more but it's at an early-stage startup (Series A, 15 people). My current job is stable at a mid-size company, I like my team, but I've been in the same role for 2 years and feel stagnant. The startup is in a space I'm genuinely excited about but I have a mortgage and a kid starting school next year. Think carefully about this and give me a recommendation.",
+      "expected_output": "A recommendation that surfaces the hidden assumptions (e.g., what 'stagnant' really means, startup survival rates), considers multiple perspectives (family stability, career growth, risk tolerance), doesn't just list pros/cons but actually weighs them, and expresses honest uncertainty about the right answer.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Our team has been debating whether to adopt a 4-day work week. The CEO is skeptical but open to a pilot. HR says morale is low from recent layoffs. Engineering says they can maintain output. Sales says they'll lose deals if clients can't reach them on Fridays. Draft a proposal that addresses these concerns and recommend whether we should do a pilot. Think through this carefully.",
+      "expected_output": "A proposal that steelmans the sales concern (it's real, not just resistance to change), identifies what would actually need to be true for a pilot to work, considers the perspectives of all stakeholders (CEO, HR, engineering, sales, clients), and flags the assumptions the pilot is testing rather than assuming it will succeed.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "A colleague sent me a Slack message that reads: 'I noticed you presented my analysis in the team meeting without mentioning my contribution. I'm sure it wasn't intentional but I wanted to flag it.' I genuinely don't remember doing this but I also don't want to be dismissive. How should I respond? Think about this carefully before drafting a reply.",
+      "expected_output": "A response that steelmans the colleague's perspective (even if unintentional, the impact is real), considers multiple interpretations without being dismissive, avoids both over-apologizing and defensiveness, and produces a specific draft reply that's human and not corporate-speak.",
+      "files": []
+    }
+  ]
+}
