@@ -13,7 +13,7 @@ Recruit, cache, and reuse domain expert agent personas. The registry is shared i
 
 Show all cached experts.
 
-1. Read `knowledge/experts/INDEX.md`
+1. Read `<data-root>/experts/INDEX.md`
 2. Print the Core Team table (permanent) and Domain Experts table (cached)
 3. Show: name, domain, tags, last used, consumer skills
 
@@ -46,13 +46,13 @@ Other skills call this protocol during their setup phases. Follow these steps in
 ### Step 1: Search
 
 ```
-rg -i "<domain_keyword>" knowledge/experts/INDEX.md
+rg -i "<domain_keyword>" <data-root>/experts/INDEX.md
 ```
 
 Scan for matching tags and domains. If the INDEX has no hits, also try:
 
 ```
-rg -i "<domain_keyword>" knowledge/experts/*.md
+rg -i "<domain_keyword>" <data-root>/experts/*.md
 ```
 
 ### Step 2: Evaluate
@@ -73,7 +73,7 @@ If no match: skip to Step 5.
 ### Step 4: Reuse
 
 When reusing a cached expert:
-1. Load the full file from `knowledge/experts/<slug>.md`
+1. Load the full file from `<data-root>/experts/<slug>.md`
 2. Extract the Persona Prompt and Research Context sections
 3. Update `last_used` to today's date in the file frontmatter
 4. Add the calling skill to `consumers[]` if not already present
@@ -87,7 +87,7 @@ When reusing a cached expert:
    - Define thinking style, key frameworks, what they look for, blind spots
    - Write the Persona Prompt (100-300 words, second person: "You are...")
 3. **Deep research** (if triggered — see criteria below): dispatch a research subagent, save findings under `## Research Context`
-4. **Save**: write to `knowledge/experts/<slug>.md`
+4. **Save**: write to `<data-root>/experts/<slug>.md`
 5. **Update INDEX.md**: add a row to the Domain Experts table with name, domain, tags, last used, created date
 6. Return the persona text to the caller
 
@@ -119,8 +119,14 @@ Followed by three sections: `## Persona Prompt`, `## Research Context`, `## Perf
 
 ## Storage
 
+Expert data is stored under the **wits data root** (see `references/data-root.md` for resolution logic):
+
+- Default: `~/.local/share/wits/experts/`
+- Override: set `WITS_DATA_DIR` environment variable
+- Fallback: `/tmp/wits-$USER/experts/` (ephemeral, with warning)
+
 ```
-knowledge/experts/
+<data-root>/experts/
 ├── INDEX.md                   # Expert roster — scan this first
 ├── core/                      # Core team — permanent, pre-built via deep research
 │   ├── facilitator-knowledge.md
@@ -129,9 +135,13 @@ knowledge/experts/
 └── <domain-slug>.md           # Cached domain experts (accumulated over time)
 ```
 
-**Core team** (`knowledge/experts/core/`) holds knowledge bases for permanent roles (facilitator, reasoning cartographer, critical lens). These are built once during skill creation via deep research and loaded at session start — not at runtime. They are not domain experts; they do not use the expert-template format.
+**Resolving the expert directory**: Check `$WITS_DATA_DIR/experts/` first, then `~/.local/share/wits/experts/`. Create the directory on first use if it doesn't exist.
 
-**Domain experts** (`knowledge/experts/*.md`) are cached personas created on demand and reused across sessions and skills.
+**Core team** (`experts/core/`) holds knowledge bases for permanent roles (facilitator, reasoning cartographer, critical lens). These are built once during skill creation via deep research and loaded at session start — not at runtime. They are not domain experts; they do not use the expert-template format.
+
+**Domain experts** (`experts/*.md`) are cached personas created on demand and reused across sessions and skills.
+
+> **Data handling notice**: Expert personas may contain domain-specific information. In regulated environments, ensure the data root is on an appropriate storage volume.
 
 ---
 
@@ -142,7 +152,7 @@ Skills that need domain experts call the recruiting protocol during their setup 
 ```
 1. Identify needed domains from the task/topic
 2. For each domain:
-   a. Call: Search knowledge/experts/INDEX.md for matches
+   a. Call: Search <data-root>/experts/INDEX.md for matches
    b. Evaluate fit (domain alignment, research freshness, thinking style)
    c. If good match → reuse (load persona, update last_used + consumers[])
    d. If no match → create (build persona, optionally deep-research, save)
