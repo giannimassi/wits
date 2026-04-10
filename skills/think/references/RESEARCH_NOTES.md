@@ -6,8 +6,8 @@ A Claude Research survey (613 sources, 20 min) cataloged **92 structured reasoni
 across 7 domains: critical thinking, decision-making, cognitive debiasing, systems thinking,
 intelligence community SATs, argument mapping, and metacognitive tools.
 
-Full research saved at: `/tmp/critical-thinking-research-claude.md` (session artifact).
-Gemini Deep Research was also initiated but results not yet extracted.
+Full research catalog: 92 frameworks across 7 domains (session artifact, not shipped with plugin).
+Gemini Deep Research on composability/discoverability also completed (archived separately).
 
 ## Key Finding: Convergence Across Domains
 
