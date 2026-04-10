@@ -3,21 +3,21 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "/wits:recruit list",
+      "prompt": "/recruit list",
       "expected_output": "Shows expert registry with core team and any cached domain experts.",
       "should_trigger": true,
       "files": []
     },
     {
       "id": 2,
-      "prompt": "/wits:recruit search database",
+      "prompt": "/recruit search database",
       "expected_output": "Searches the expert index for database-related experts. Offers to load or create.",
       "should_trigger": true,
       "files": []
     },
     {
       "id": 3,
-      "prompt": "/wits:recruit create a Kubernetes deployment specialist with deep knowledge of Helm charts and ArgoCD",
+      "prompt": "/recruit create a Kubernetes deployment specialist with deep knowledge of Helm charts and ArgoCD",
       "expected_output": "Creates a new expert persona with proper frontmatter, persona prompt, and research context. Updates INDEX.md.",
       "should_trigger": true,
       "files": []

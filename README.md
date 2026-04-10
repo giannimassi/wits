@@ -2,9 +2,11 @@
 
 Composable reasoning skills for AI agents. Three skills that make Claude Code (and compatible agents) think harder when it matters.
 
+Follows the [Agent Skills](https://agentskills.io) open standard. Works with Claude Code, Codex CLI, and any compatible agent.
+
 ## What's in the box
 
-### `/wits:think` — 12 reasoning primitives
+### `think` — 12 reasoning primitives
 
 Structured thinking tools drawn from intelligence analysis (CIA SATs), cognitive science, philosophy, and decision theory. Each primitive is a self-contained protocol that an agent can apply independently or chain together.
 
@@ -25,36 +27,36 @@ Structured thinking tools drawn from intelligence analysis (CIA SATs), cognitive
 
 The agent picks the right primitive(s) automatically based on a triage table, or you can inject specific ones into subagent prompts.
 
-### `/wits:discuss` — facilitated multi-agent discussion
+### `discuss` — facilitated multi-agent discussion
 
 Spawns a team of AI agents to have a structured, time-limited discussion on any topic. Includes a facilitator, reasoning cartographer, critical lens, and domain experts recruited on the fly.
 
 ```
-/wits:discuss "Should we rewrite the billing system?" --mode converge --duration 10m
+/discuss "Should we rewrite the billing system?" --mode converge --duration 10m
 ```
 
 Requires Claude Code (uses the Task tool for subagent dispatch).
 
-### `/wits:recruit` — expert persona recruitment
+### `recruit` — expert persona recruitment
 
 Create, cache, and reuse domain expert personas. Experts persist across sessions and are shared between skills.
 
 ```
-/wits:recruit create "PostgreSQL migration specialist"
-/wits:recruit search "database"
-/wits:recruit list
+/recruit create "PostgreSQL migration specialist"
+/recruit search "database"
+/recruit list
 ```
 
 ## Install
 
 ```bash
-claude plugin install giannimassi/wits
-```
+# Install all three skills
+npx skills add giannimassi/wits@skills/think
+npx skills add giannimassi/wits@skills/discuss
+npx skills add giannimassi/wits@skills/recruit
 
-For local development:
-
-```bash
-claude --plugin-dir /path/to/wits
+# Or install just the one you need
+npx skills add giannimassi/wits@skills/think
 ```
 
 ## Examples
@@ -74,7 +76,7 @@ Triggers perspective-rotation (your future self, your partner, the startup's inv
 
 **Business: "Should we enter this market?"**
 ```
-/wits:discuss "Should we launch a B2B product alongside our B2C offering?" --mode converge
+/discuss "Should we launch a B2B product alongside our B2C offering?" --mode converge
 ```
 Spawns domain experts (B2B SaaS, your industry, go-to-market strategy) and runs a structured discussion with synthesis and voting.
 
@@ -87,7 +89,7 @@ Uses steelman (what's the strongest case FOR their approach?) and perspective-ro
 
 **Research: "Which framework should we adopt?"**
 ```
-/wits:discuss "React Server Components vs Astro vs Next.js for our docs site" --size medium
+/discuss "React Server Components vs Astro vs Next.js for our docs site" --size medium
 ```
 Recruits framework-specific experts and runs a structured comparison with explicit trade-offs.
 
@@ -126,7 +128,9 @@ Think is stateless and stores nothing.
 ## Uninstall
 
 ```bash
-claude plugin uninstall wits
+npx skills remove think
+npx skills remove discuss
+npx skills remove recruit
 ```
 
 To also remove cached data:

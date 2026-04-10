@@ -129,9 +129,9 @@ Present the final output to the user.
 ## Key Rules
 
 - **The facilitator controls the discussion.** The skill runner handles mechanics (timer, files, dispatch). The facilitator handles ALL content decisions (who speaks, about what, when to synthesize). The skill runner MUST dispatch the facilitator before every content round — never decide to run a parallel round, directed turn, or trigger synthesis without the facilitator's ACTION directing it.
-- **Use `/wits:recruit` for experts.** You MUST invoke the `/wits:recruit` skill for expert creation, not create personas inline. The recruit skill handles caching in `<data-root>/experts/`, INDEX.md updates, and reuse checking. Inline-created experts are lost after the session.
-- **Platform requirement.** This skill requires the Task tool (for spawning subagents). It works in Claude Code but NOT in Codex CLI or Gemini CLI. The `/wits:think` and `/wits:recruit` skills work on all platforms.
-- **Graceful degradation without recruit.** If `/wits:recruit` is unavailable, discuss will use generic participant roles instead of domain-specific expert personas. Quality degrades but the skill still functions.
+- **Use `/recruit` for experts.** You MUST invoke the `/recruit` skill for expert creation, not create personas inline. The recruit skill handles caching in `<data-root>/experts/`, INDEX.md updates, and reuse checking. Inline-created experts are lost after the session.
+- **Platform requirement.** This skill requires the Task tool (for spawning subagents). It works in Claude Code but NOT in Codex CLI or Gemini CLI. The `/think` and `/recruit` skills work on all platforms.
+- **Graceful degradation without recruit.** If `/recruit` is unavailable, discuss will use generic participant roles instead of domain-specific expert personas. Quality degrades but the skill still functions.
 - **Check timer before every facilitator dispatch.** The timer MUST be read via `scripts/discuss-timer.sh` before EVERY facilitator dispatch. The timer JSON determines the facilitator's phase context, which directly affects its behavior. Never skip the timer check.
 - **Fresh instances per turn.** Every agent dispatch is a new context. The transcript IS the memory. No persistent agent state.
 - **Neutrality constraint.** The facilitator cannot express content positions — process guidance only.
@@ -169,7 +169,7 @@ Present the final output to the user.
 └── evals/
     └── evals.json           # Test cases
 
-<data-root>/experts/           # Shared expert registry (via /wits:recruit skill)
+<data-root>/experts/           # Shared expert registry (via /recruit skill)
 ├── core/                     # Core team knowledge bases
 │   ├── facilitator-knowledge.md
 │   ├── cartographer-knowledge.md

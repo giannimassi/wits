@@ -3,35 +3,35 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "/wits:discuss Should we migrate our PostgreSQL database to DynamoDB? We have 50GB of relational data with some JSON columns. --mode converge --duration 5m",
+      "prompt": "/discuss Should we migrate our PostgreSQL database to DynamoDB? We have 50GB of relational data with some JSON columns. --mode converge --duration 5m",
       "expected_output": "Recruits database experts. Discussion runs with facilitator-directed turns. Convergence via NGT voting. Output includes decision, rationale, dissent, confidence.",
       "should_trigger": true,
       "files": []
     },
     {
       "id": 2,
-      "prompt": "/wits:discuss What are the implications of AI agents having persistent memory? --duration 10m",
+      "prompt": "/discuss What are the implications of AI agents having persistent memory? --duration 10m",
       "expected_output": "Exploration mode. Recruits AI ethics, cognitive science experts. Synthesis produces ideas map, key insights, open questions.",
       "should_trigger": true,
       "files": []
     },
     {
       "id": 3,
-      "prompt": "/wits:discuss How should we structure auth for our microservices? --mode converge --size 0 --duration 5m",
+      "prompt": "/discuss How should we structure auth for our microservices? --mode converge --size 0 --duration 5m",
       "expected_output": "Core team only (--size 0). Focused discussion with 3 agents. Convergence with NGT voting.",
       "should_trigger": true,
       "files": []
     },
     {
       "id": 4,
-      "prompt": "/wits:discuss What makes a great engineering culture? --duration 8m --models all-sonnet",
+      "prompt": "/discuss What makes a great engineering culture? --duration 8m --models all-sonnet",
       "expected_output": "Exploration mode. All-sonnet models. Broad topic, diverse experts. Rich exploration with multiple threads.",
       "should_trigger": true,
       "files": []
     },
     {
       "id": 5,
-      "prompt": "/wits:discuss Should we open-source our internal developer tools? The tools are mature, widely used internally, but maintaining OSS would take ~20% of one engineer's time. --mode converge",
+      "prompt": "/discuss Should we open-source our internal developer tools? The tools are mature, widely used internally, but maintaining OSS would take ~20% of one engineer's time. --mode converge",
       "expected_output": "Recruits OSS strategy and developer relations experts. Considers business value, community building, talent attraction, maintenance cost.",
       "should_trigger": true,
       "files": []
