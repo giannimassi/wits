@@ -1,0 +1,6 @@
+.DS_Store
+.dag/
+*.swp
+*.swo
+tmp/
+.claude/
