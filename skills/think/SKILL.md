@@ -30,20 +30,28 @@ tools before finalizing your approach."
 
 ## Output discipline
 
-The primitives are **thinking scaffolding, not output format.** Use them to structure your
-reasoning process, but present clean results to the consumer. Specifically:
+The primitives are **thinking scaffolding, not output format.** Output verbosity is controlled
+by the `--explain` flag (default: `none`):
+
+| Level | Behavior |
+|-------|----------|
+| `none` (default) | Clean results only. Do not label sections with primitive names. Show conclusions, not worksheets. |
+| `scaffold` | Tag which primitives were used (e.g., "Used: assumption-audit, pre-mortem") but still present clean conclusions. |
+| `full` | Show all intermediate reasoning artifacts — the full scoring tables, failure mode lists, and working. |
+
+**Default (`none`) rules:**
 
 - **Do not label sections** with primitive names ("Step 1: Assumption Audit", "Steelman phase").
   The consumer doesn't need to know which framework you used — they need the insight.
 - **Show conclusions, not worksheets.** If you ran a matrix evaluation, present the recommendation
-  and the key trade-offs — not the full scoring table (unless the consumer explicitly asked for
-  the working). If you did a pre-mortem, present the top risks and mitigations — not all 5
-  failure modes with P/I/D ratings.
+  and the key trade-offs — not the full scoring table. If you did a pre-mortem, present the
+  top risks and mitigations — not all 5 failure modes with P/I/D ratings.
 - **Be concise.** The primitives help you think more carefully, not write more words. A
   well-reasoned paragraph is better than a wall of structured artifacts.
-- **Exception:** When the consumer explicitly asks for structured reasoning output ("show your
-  work", "walk me through your thinking", "use thinking tools and show the output"), then
-  the full intermediate artifacts are appropriate.
+
+**Triggers for `full` mode:** When the consumer explicitly asks for structured reasoning output
+("show your work", "walk me through your thinking", "use thinking tools and show the output",
+"--explain full"), present the full intermediate artifacts.
 
 ## Triage: Which tool do I need?
 
