@@ -3,20 +3,44 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "/recruit list",
-      "expected_output": "Shows core team (3 experts) and domain experts table (1 PostgreSQL specialist from test). Clean formatted output.",
+      "prompt": "/wits:recruit list",
+      "expected_output": "Shows expert registry with core team and any cached domain experts.",
+      "should_trigger": true,
       "files": []
     },
     {
       "id": 2,
-      "prompt": "/recruit search database",
-      "expected_output": "Finds the PostgreSQL migration specialist. Offers to load it or create a new one.",
+      "prompt": "/wits:recruit search database",
+      "expected_output": "Searches the expert index for database-related experts. Offers to load or create.",
+      "should_trigger": true,
       "files": []
     },
     {
       "id": 3,
-      "prompt": "/recruit create a Kubernetes deployment specialist with deep knowledge of Helm charts and ArgoCD",
-      "expected_output": "Creates a new expert persona file at knowledge/experts/kubernetes-deployment-specialist.md with proper frontmatter, persona prompt, and research context. Updates INDEX.md.",
+      "prompt": "/wits:recruit create a Kubernetes deployment specialist with deep knowledge of Helm charts and ArgoCD",
+      "expected_output": "Creates a new expert persona with proper frontmatter, persona prompt, and research context. Updates INDEX.md.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I need an expert on GDPR compliance for our data pipeline review.",
+      "expected_output": "Should trigger recruit. Creates or finds a GDPR/data privacy expert persona.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Who should review this database migration? We're moving from MySQL to PostgreSQL.",
+      "expected_output": "Should trigger recruit. Searches for database migration expertise, creates if needed.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Write unit tests for the UserService class.",
+      "expected_output": "Should NOT trigger recruit. This is a coding task, not an expertise request.",
+      "should_trigger": false,
       "files": []
     }
   ]

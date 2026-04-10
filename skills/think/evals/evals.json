@@ -1,22 +1,102 @@
 {
-  "skill_name": "thinking-tools",
+  "skill_name": "think",
   "evals": [
     {
       "id": 1,
       "prompt": "I need to decide whether to accept a job offer. The new role pays 30% more but it's at an early-stage startup (Series A, 15 people). My current job is stable at a mid-size company, I like my team, but I've been in the same role for 2 years and feel stagnant. The startup is in a space I'm genuinely excited about but I have a mortgage and a kid starting school next year. Think carefully about this and give me a recommendation.",
-      "expected_output": "A recommendation that surfaces the hidden assumptions (e.g., what 'stagnant' really means, startup survival rates), considers multiple perspectives (family stability, career growth, risk tolerance), doesn't just list pros/cons but actually weighs them, and expresses honest uncertainty about the right answer.",
+      "expected_output": "Surfaces hidden assumptions (what 'stagnant' really means, startup survival rates), considers multiple perspectives, weighs trade-offs with honest uncertainty.",
+      "should_trigger": true,
       "files": []
     },
     {
       "id": 2,
-      "prompt": "Our team has been debating whether to adopt a 4-day work week. The CEO is skeptical but open to a pilot. HR says morale is low from recent layoffs. Engineering says they can maintain output. Sales says they'll lose deals if clients can't reach them on Fridays. Draft a proposal that addresses these concerns and recommend whether we should do a pilot. Think through this carefully.",
-      "expected_output": "A proposal that steelmans the sales concern (it's real, not just resistance to change), identifies what would actually need to be true for a pilot to work, considers the perspectives of all stakeholders (CEO, HR, engineering, sales, clients), and flags the assumptions the pilot is testing rather than assuming it will succeed.",
+      "prompt": "Our team has been debating whether to adopt a 4-day work week. The CEO is skeptical but open to a pilot. HR says morale is low. Engineering says they can maintain output. Sales says they'll lose deals. Draft a proposal that addresses these concerns. Think through this carefully.",
+      "expected_output": "Steelmans the sales concern, identifies what would need to be true for a pilot to work, considers all stakeholder perspectives, flags the assumptions the pilot is testing.",
+      "should_trigger": true,
       "files": []
     },
     {
       "id": 3,
-      "prompt": "A colleague sent me a Slack message that reads: 'I noticed you presented my analysis in the team meeting without mentioning my contribution. I'm sure it wasn't intentional but I wanted to flag it.' I genuinely don't remember doing this but I also don't want to be dismissive. How should I respond? Think about this carefully before drafting a reply.",
-      "expected_output": "A response that steelmans the colleague's perspective (even if unintentional, the impact is real), considers multiple interpretations without being dismissive, avoids both over-apologizing and defensiveness, and produces a specific draft reply that's human and not corporate-speak.",
+      "prompt": "A colleague sent me a Slack message: 'I noticed you presented my analysis without mentioning my contribution.' How should I respond? Think about this carefully.",
+      "expected_output": "Steelmans the colleague's perspective, considers multiple interpretations, avoids both over-apologizing and defensiveness, produces a specific draft reply.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "We're considering moving our monolith to microservices. We have 8 engineers, the monolith is 3 years old, ~200K lines of Go. Deployments take 20 minutes. The CEO wants faster feature delivery. Should we do it?",
+      "expected_output": "Challenges the assumption that microservices = faster delivery, anchors on base rates of monolith-to-microservice migrations, runs pre-mortem on the migration, considers team size constraints.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "How long will it take to build a v1 of our mobile app? We have 2 React Native developers, the app needs auth, a feed, messaging, and push notifications. We're targeting iOS first.",
+      "expected_output": "Uses decomposition to break the estimate into components, anchors on base rates for similar apps, applies confidence calibration to give a range rather than a point estimate.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "My co-founder wants to pivot from B2C to B2B. We have 5K users, $2K MRR, 6 months of runway. He says enterprise contracts would solve our revenue problem. I think we'd lose our existing users and our product isn't enterprise-ready. Help me think through this.",
+      "expected_output": "Generates multiple hypotheses about why B2B might or might not work, evaluates via matrix against criteria like runway, team capability, market validation, runs inversion (how would this pivot definitely fail?).",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Our on-call rotation has been brutal. 3 incidents this week, all P1s. The team is burned out. My manager says 'we need to fix the reliability problem' but I think the problem is actually our alerting thresholds being too aggressive. How do I figure out what's really going on?",
+      "expected_output": "Uses causal mapping to trace the feedback loop (alerts -> fatigue -> slow response -> more incidents), applies assumption audit on 'reliability problem' vs 'alerting problem', decomposes the issue.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Review this API design and tell me if it's good: we have POST /users for creation, GET /users/:id for retrieval, PATCH /users/:id for updates, and DELETE /users/:id. Auth is via JWT in headers. Rate limited to 100 req/min.",
+      "expected_output": "Applies disconfirmation (what could go wrong?), steelmans the design first, audits assumptions about rate limits and auth approach.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "I've been offered equity in a friend's startup: 0.5% for $25K. The startup has $500K ARR, raised a seed round at $10M valuation, and is growing 15% MoM. Is this a good deal?",
+      "expected_output": "Anchors on base rates (startup survival at seed stage, dilution patterns), decomposes the expected value calculation, applies confidence calibration to the growth assumption, considers multiple scenarios.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "Write a Python function that sorts a list of integers.",
+      "expected_output": "Should NOT trigger thinking tools. This is a straightforward coding task with no decision point, ambiguity, or stakes.",
+      "should_trigger": false,
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "What's the capital of France?",
+      "expected_output": "Should NOT trigger thinking tools. Trivial factual question.",
+      "should_trigger": false,
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "Convert this JSON to YAML: {\"name\": \"test\", \"version\": 1}",
+      "expected_output": "Should NOT trigger thinking tools. Mechanical conversion task.",
+      "should_trigger": false,
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "We need to decide between AWS Lambda and ECS Fargate for our new event processing service. Events come in bursts (100K in 5 minutes, then quiet for hours). Each event takes ~2 seconds to process. We need results within 30 minutes. Budget is tight. Evaluate our options.",
+      "expected_output": "Generates hypotheses for each option, builds evaluation matrix (cost, latency, cold start, burst handling, operational overhead), applies pre-mortem to the chosen option.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 14,
+      "prompt": "Our competitor just launched a feature that's very similar to what we've been building for the last quarter. We're 2 weeks from launch. Should we rush to ship, pivot the feature to differentiate, or scrap it entirely? The team is demoralized.",
+      "expected_output": "Applies perspective rotation (customers, team, competitors, investors), challenges the assumption that being second means losing, runs pre-mortem on each option, addresses the morale dimension.",
+      "should_trigger": true,
       "files": []
     }
   ]

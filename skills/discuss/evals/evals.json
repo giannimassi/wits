@@ -3,26 +3,51 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "/discuss Should we migrate our PostgreSQL database to DynamoDB for our user service? We have about 50GB of data, mostly relational with some JSON columns. --mode converge --duration 5m",
-      "expected_output": "Intake asks 1-2 clarifying questions. Recruits 2 domain experts (database/migration). Discussion runs with facilitator-directed turns. Convergence reached via NGT voting. Output includes decision, rationale, dissent, confidence score.",
+      "prompt": "/wits:discuss Should we migrate our PostgreSQL database to DynamoDB? We have 50GB of relational data with some JSON columns. --mode converge --duration 5m",
+      "expected_output": "Recruits database experts. Discussion runs with facilitator-directed turns. Convergence via NGT voting. Output includes decision, rationale, dissent, confidence.",
+      "should_trigger": true,
       "files": []
     },
     {
       "id": 2,
-      "prompt": "/discuss What are the implications of AI agents having persistent memory across conversations? Think about privacy, emergent behavior, and the relationship between human and AI. --duration 10m",
-      "expected_output": "Exploration mode (default). Recruits 2-3 experts (AI ethics, cognitive science, systems design). Discussion follows diverse threads. Facilitator allows tangents. Synthesis produces ideas map, key insights, open questions, surprising connections.",
+      "prompt": "/wits:discuss What are the implications of AI agents having persistent memory? --duration 10m",
+      "expected_output": "Exploration mode. Recruits AI ethics, cognitive science experts. Synthesis produces ideas map, key insights, open questions.",
+      "should_trigger": true,
       "files": []
     },
     {
       "id": 3,
-      "prompt": "/discuss How should we structure authentication for our microservices? --mode converge --size 0 --duration 5m",
-      "expected_output": "Core team only (--size 0, no domain experts). Intake may ask about current auth setup. Discussion is focused with 3 agents. Convergence with NGT voting among core team.",
+      "prompt": "/wits:discuss How should we structure auth for our microservices? --mode converge --size 0 --duration 5m",
+      "expected_output": "Core team only (--size 0). Focused discussion with 3 agents. Convergence with NGT voting.",
+      "should_trigger": true,
       "files": []
     },
     {
       "id": 4,
-      "prompt": "/discuss What makes a great engineering culture? --duration 8m --models all-sonnet",
-      "expected_output": "Exploration mode. All-sonnet model assignment (experts on Sonnet, core team stays Opus per spec). Broad topic should recruit 2-3 diverse experts. Rich exploration with multiple threads.",
+      "prompt": "/wits:discuss What makes a great engineering culture? --duration 8m --models all-sonnet",
+      "expected_output": "Exploration mode. All-sonnet models. Broad topic, diverse experts. Rich exploration with multiple threads.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "/wits:discuss Should we open-source our internal developer tools? The tools are mature, widely used internally, but maintaining OSS would take ~20% of one engineer's time. --mode converge",
+      "expected_output": "Recruits OSS strategy and developer relations experts. Considers business value, community building, talent attraction, maintenance cost.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Let's brainstorm how to reduce our cloud bill by 40% without affecting performance.",
+      "expected_output": "Should trigger discuss skill (brainstorm with team). Recruits cloud cost optimization expert. Explore mode. Generates concrete strategies.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Fix the bug in the login handler where sessions expire too early.",
+      "expected_output": "Should NOT trigger discuss. This is a specific coding task, not a discussion topic.",
+      "should_trigger": false,
       "files": []
     }
   ]
