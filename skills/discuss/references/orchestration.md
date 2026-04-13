@@ -46,12 +46,26 @@ REPEAT until converged == true:
   # If turn > 15: last 10 turns in full + each earlier turn as one-line summary
   # Otherwise: full transcript
 
+  # Compute pacing hint: expected turns ≈ duration_min / 2 (rough heuristic, 30s/turn minimum)
+  expected_total_turns = max(5, DURATION_SEC / 120)
+  expected_progress    = elapsed_sec / total_sec
+  actual_progress      = turn / expected_total_turns
+  pacing_hint = (
+    "BEHIND_PACE: go deeper this turn — longer prompt, more substantive question, or request sidebar"
+    if actual_progress < expected_progress - 0.15
+    else "AHEAD_OF_PACE: tighten this turn — shorter prompt, prefer directed_turn, consider whether you're done"
+    if actual_progress > expected_progress + 0.15
+    else "ON_PACE"
+  )
+
   facilitator_context = {
     topic_brief:      <from team.json>,
     mode:             <from team.json>,
     time_remaining:   timer.remaining_human,
     phase:            timer.phase,
     turn_number:      turn,
+    expected_turns:   expected_total_turns,  # rough guide, not hard budget
+    pacing_hint:      pacing_hint,
     team_roster:      <agent id + name + role, from team.json>,
     turn_stats:       <per-agent turn count, derived from transcript>,
     transcript_summary: transcript_summary,
@@ -130,6 +144,23 @@ if no match: ACTION is MALFORMED
 else: action = JSON.parse(action_line)
      if JSON.parse fails: ACTION is MALFORMED
 ```
+
+### Output-size guard [CRITICAL]
+
+Before parsing the ACTION, check the facilitator's total output size. The facilitator's job is a single routing decision, not content generation — if it produces a lot of text, it has overstepped its role (possibly running its own mini-discussion, dispatching sub-agents, or generating synthesis). This has been observed in practice: a single runaway facilitator turn produced 16K output tokens and fabricated discussion content.
+
+```
+if len(facilitator_output) > 8000 chars  (roughly 2000 tokens):
+    log "[Facilitator overflow at turn N: produced X chars, expected <6000]"
+    treat as MALFORMED regardless of whether trailing JSON is present
+    retry ONCE with prompt prefix:
+        "Your prior response was too long. Output ONLY: 2 sentences analysis + 1 sentence rationale + 1 line ACTION JSON. Do NOT dispatch sub-agents, call tools, or generate discussion content. Nothing else."
+    if retry also overflows (>8000 chars):
+        log "[Facilitator repeatedly overflowed — forcing synthesis]"
+        force synthesis with reason "facilitator repeatedly overflowed output constraints"
+```
+
+A well-behaved facilitator turn is typically 1500-3000 characters. Overflow signals the agent has gone off-rails, not that the turn needed more words.
 
 **Required fields by action type:**
 
