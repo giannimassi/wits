@@ -8,7 +8,8 @@ Use this template when creating a new domain expert for the expert registry.
 ---
 name: <Display Name — e.g., "Dr. PostgreSQL", "Maya the Architect">
 domain: <Primary domain — e.g., "PostgreSQL internals and migration patterns">
-tags: [<3-6 searchable tags>]
+stance: <One of: analytical-structural | risk-averse-systems-thinker | high-risk-pragmatist | academic-theorist | lived-user | skeptic-of-expertise | contrarian-by-design | practitioner-not-credentialed>
+tags: [<3-6 searchable tags — include the stance as a tag too: `stance-<name>`>]
 thinking_style: <How they approach problems — e.g., "Systems thinker, traces second-order effects">
 frameworks: [<Key mental models they use>]
 looks_for: <What draws their attention — e.g., "Data integrity risks, rollback strategies">
@@ -45,3 +46,5 @@ source_tasks: [<plan files or discussions that spawned this expert>]
 5. **Research context compounds**: When deep research is done, save the findings here. Next time this expert domain is needed, the research carries forward — no re-research required.
 
 6. **Name gives personality**: "Dr. PostgreSQL" performs differently than "Database Expert #1." Names create a character the agent can inhabit, leading to more distinctive contributions.
+
+7. **Stance is a first-class field**: The `stance` field tells callers (like `/discuss`) what cognitive archetype this expert represents — independent of their domain. Two PostgreSQL experts can have the same domain but opposite stances (one `risk-averse-systems-thinker`, one `high-risk-pragmatist`). `/discuss`'s panel-selection algorithm uses this field to prevent stance-homogeneous panels (where all voices implicitly share the same worldview). If the stance genuinely doesn't fit one of the listed options, add a new one — but prefer the existing taxonomy for discoverability.

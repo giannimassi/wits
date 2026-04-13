@@ -49,27 +49,44 @@ The skill runner merges `extracted_params` from the intake agent with explicit f
 
 If the intake agent returns questions, present them to the user. After answers (or defaults accepted), the intake agent produces the final topic brief.
 
-### Step 4: Phase 1 — Recruiting
+### Step 4: Phase 1 — Panel Selection & Recruiting
 
-Use the `/recruit` skill to assemble the discussion team:
+**Separation of concerns:** `/recruit` creates and caches individual experts. `/discuss` decides WHO should be on the panel. The steps below are discuss's responsibility — they call `/recruit` for per-persona create/fetch, but the selection algorithm lives here.
 
 1. **Core team** (always present):
    - **Facilitator** (Opus) — read `<data-root>/experts/core/facilitator-knowledge.md`
    - **Cartographer** (Opus) — read `<data-root>/experts/core/cartographer-knowledge.md`
    - **Critical Lens** (Opus) — read `<data-root>/experts/core/critic-knowledge.md`
 
-2. **Domain experts** — use the `/recruit` skill's recruiting protocol:
-   - Pass the domain areas from the intake agent's topic brief
-   - Follow the search → evaluate → offer → reuse/create flow
-   - If `needs_deep_research`, warn user about extra time and dispatch deep research per domain
-   - Number of experts based on `--size` flag or auto-heuristic (1-2 domains → 1-2 experts, 3-4 → 2-3, 5+ → 3-4+)
+2. **Domain coverage** — identify needed voices by domain:
+   - From the intake agent's topic brief, extract domain areas
+   - For each domain, call `/recruit` (search → evaluate → offer → reuse/create) to get a primary expert
+   - Number based on `--size` flag or auto-heuristic (1-2 domains → 1-2 experts, 3-4 → 2-3, 5+ → 3-4+)
 
-3. **Model assignment** per `--models` flag:
-   - `mixed`: Opus for core team (facilitator, cartographer, critic), Sonnet for domain experts
-   - `all-opus`: Opus for everyone
-   - `all-sonnet`: Sonnet for everyone (core team stays Opus — this flag only affects experts + intake)
+3. **Stance diversity** — explicit anti-homogeneity step [NEW]:
+   - After domain picks, classify each selected expert's `stance` (implied or explicit frontmatter field).
+     Common stances: `analytical-structural`, `risk-averse-systems-thinker`, `high-risk-pragmatist`, `academic-theorist`, `lived-user`, `skeptic-of-expertise`, `contrarian-by-design`.
+   - Check: are all experts the same stance class? (e.g. four flavors of "careful analytical professional")
+   - **If panel is stance-homogeneous**: add at least one counterbalancing voice. Defaults by context:
+     - Analytical-heavy panel + decision has a build-vs-analyze axis → add a `high-risk-pragmatist` (e.g. `high-velocity-indie-builder`)
+     - Academic-heavy panel → add a practitioner with lived experience
+     - Industry-heavy panel + topic is novel → add an outsider/contrarian
+   - The point: the panel should have at least two stance classes represented before the discussion starts. **Diversity is not a bonus feature; it's a precondition for non-laundered consensus.**
 
-4. Present the assembled roster to the user: "Your discussion team: [names + roles]"
+4. **Model diversity** (laundered-certainty mitigation):
+   - All-Sonnet personas share base-model priors. When a discussion has genuinely contested dimensions, assign at least one persona to a different model (`model: "opus"` in team.json) OR dispatch via a different subagent_type (codex/gemini) if available.
+   - Per `--models` flag:
+     - `mixed` (default): Opus for core team, Sonnet for most experts, **at least one expert on Opus** if panel size ≥ 3
+     - `all-opus`: Opus for everyone
+     - `all-sonnet`: Sonnet everywhere except core team
+
+5. **Facilitator panel review** [NEW]:
+   - Before locking the roster, dispatch the facilitator ONCE with the proposed panel + topic brief.
+   - Prompt: "Here's the proposed panel: [list]. Topic: [brief]. Critique it: what stance is missing? Who would disagree with the emerging frame for reasons none of these people would voice? Answer in 3-5 sentences. If the panel is adequate, say 'adequate' and why."
+   - If facilitator flags a gap: recruit one more expert to fill it (call `/recruit create` with the gap description) before proceeding. Max one additional recruit from this step — if the facilitator keeps flagging gaps after that, proceed anyway and note the limitation in the final report.
+
+6. Present the assembled roster to the user: "Your discussion team: [names + roles + stances + models]"
+   - Show the stance distribution explicitly
    - User can say "add <domain>" or "remove <name>" to customize
    - Once confirmed, write `team.json` to `tmp/discuss-<session-id>/`
 
