@@ -22,6 +22,9 @@ INIT:
   last_critic_turn = 0
   pending_research = {}      # map of agent_id -> research result (ready to inject)
   active_research_count = 0  # global cap: max 2 concurrent background tasks
+  recruit_expert_count = 0   # per-session cap: max 2 mid-discussion recruits
+  pending_missing_perspectives = []  # from last critic audit; injected into next facilitator context
+  new_participant = null     # set when a recruit_expert was approved in the prior turn
 
 REPEAT until converged == true:
 
@@ -69,7 +72,10 @@ REPEAT until converged == true:
     team_roster:      <agent id + name + role, from team.json>,
     turn_stats:       <per-agent turn count, derived from transcript>,
     transcript_summary: transcript_summary,
-    interjection:     interjection  # empty string if none
+    interjection:     interjection,  # empty string if none
+    missing_perspectives: pending_missing_perspectives,  # from last critic audit, empty if none
+    new_participant:  new_participant,  # name of just-added expert if any, null otherwise
+    recruit_budget_remaining: 2 - recruit_expert_count  # how many more recruit_expert actions allowed
   }
 
   # Step 4: Dispatch facilitator
@@ -171,6 +177,7 @@ A well-behaved facilitator turn is typically 1500-3000 characters. Overflow sign
 | `sidebar` | `action`, `agent_a`, `agent_b`, `topic`, `turns` |
 | `request_map_update` | `action` |
 | `request_critic_review` | `action` |
+| `recruit_expert` | `action`, `domain`, `rationale`, `source_turn` |
 | `trigger_synthesis` | `action`, `reason` |
 
 **Optional on any action:** `"observed": "<string>"` — present only when an interjection was in the facilitator context and the facilitator is acknowledging it.
@@ -180,6 +187,7 @@ A well-behaved facilitator turn is typically 1500-3000 characters. Overflow sign
 - `agent_a` and `agent_b` must be different agent ids present in `team.json`; neither can be `facilitator` or `cartographer` or `critic`
 - `turns` must be integer 2-6; if outside range, clamp to [2, 6]
 - `trigger_synthesis` is rejected if current `timer.phase` is `"early"` — log warning, treat as MALFORMED and retry
+- `recruit_expert` is rejected if current `timer.phase` is `"late"` or `"wrap-up"`, or if `recruit_expert_count >= 2` for this session — log reason, append `[recruit_expert rejected: <reason>]` to transcript, skip turn (do NOT increment turn counter, do NOT retry facilitator)
 
 ---
 
@@ -306,6 +314,66 @@ A mini-loop between two agents with the facilitator summarizing at the end.
 2. Set `converged = true`
 3. Exit the discussion loop
 4. Proceed to Phase 3
+
+### 3g. `recruit_expert` (mid-discussion panel expansion)
+
+Invoked when the facilitator names a structural voice gap — usually in response to a `missing_perspectives` flag from the critic (see Section 11). The handler invokes `/recruit` to produce a persona, asks the user for approval, and appends to the roster.
+
+**Preconditions** (validated in Section 2 before reaching this handler):
+- `timer.phase` is `"early"` or `"mid"`
+- `recruit_expert_count < 2` (per-session cap; initialize at loop start)
+
+**Steps:**
+
+1. **Invoke `/recruit create`** with the `domain` field from the action. Pass the `rationale` as additional context so the recruit skill can evaluate reuse of existing experts. Recruit follows its normal search → evaluate → offer → reuse/create flow and returns:
+   ```
+   {persona_name, persona_slug, stance, model_recommendation, persona_file_path}
+   ```
+
+2. **Ask the user** using the same mechanism SKILL.md Step 4 uses for initial roster confirmation. Prompt:
+   ```
+   Critical Lens flagged a missing perspective mid-discussion:
+     Domain:    <action.domain>
+     Rationale: <action.rationale> (surfaced at turn <source_turn>)
+
+   Proposed expert: <persona_name> — <stance>, <model_recommendation>
+   Knowledge base: <persona_file_path>
+
+   Add to the panel? [y=add / n=decline / skip=ignore for now]
+   ```
+
+3. **On `y`**:
+   - Append the persona to `team.json` `agents` array (end of list, preserving existing order)
+   - Increment `recruit_expert_count`
+   - Append to transcript:
+     ```
+     ## Panel Update (after Turn N)
+     **Added:** <persona_name> (<role>) — model: <model>
+     **Reason:** <action.rationale>
+     **Flagged by:** Critical Lens, turn <source_turn>
+     ---
+     ```
+   - The new expert is visible to `turn_stats`, fairness tracking, and all future dispatches from the next loop iteration onward.
+   - On the next facilitator turn, inject an additional context field `new_participant: <persona_name>` so the facilitator can introduce them (e.g. via a targeted `directed_turn` asking them to speak to the gap).
+
+4. **On `n` (decline)**:
+   - Do NOT add to `team.json`
+   - Increment `recruit_expert_count` anyway (declines count toward the cap to prevent repeated asks)
+   - Append to transcript: `**Panel update declined:** user opted not to add <domain>; gap noted for final report`
+   - Flag in session metadata so the synthesis includes "known gaps" section
+
+5. **On `skip`**:
+   - Do NOT add, do NOT increment the counter
+   - Append to transcript: `**Panel update deferred:** <domain> held; critic may re-flag`
+
+6. **Auto-approve mode** (`--auto-expand` flag, if set):
+   - The first `recruit_expert` per session auto-approves without asking. Subsequent recruits still prompt.
+
+**Turn counting:** a `recruit_expert` action does NOT increment the turn counter. It's a panel operation, not a content turn. Cartographer/critic auto-dispatches are also suppressed for this action.
+
+**Failure modes:**
+- `/recruit` cannot produce a viable persona → log `[recruit_expert for <domain> failed: <reason>]`, do not increment counter, continue
+- User response timeout (>60s) → treat as `skip`, continue
 
 ---
 
@@ -512,6 +580,37 @@ if turn % critic_interval == 0 AND action.action != "request_critic_review":
 Same skip rule: if facilitator already requested critic review this turn, skip auto-dispatch.
 
 **Coordination note**: both cartographer and critic can trigger on the same turn. In that case, dispatch both — cartographer first, then critic. Each receives the transcript state after the turn's main action was appended.
+
+### Post-Critic Hook: Missing Perspectives Extraction
+
+After any critic dispatch (auto or manual via `request_critic_review`), parse the critic's JSON response for a `missing_perspectives` field:
+
+```
+critic_response = dispatch_critic(...)
+if critic_response.missing_perspectives is a non-empty list:
+  # Filter out perspectives the critic itself recommended holding (see critic.md Recommendation section)
+  flaggable = [p for p in critic_response.missing_perspectives if not p.hold_recommendation]
+  pending_missing_perspectives = flaggable
+else:
+  pending_missing_perspectives = []
+```
+
+`pending_missing_perspectives` is injected into the NEXT facilitator context (not the current turn's — the facilitator already dispatched). The facilitator reads it, decides whether to issue `recruit_expert`, and if so, names the gap in the action. After the facilitator acts on (or explicitly dismisses) the list, it is cleared:
+
+```
+# After parsing this turn's facilitator action:
+if action.action == "recruit_expert":
+  # facilitator acted on a flagged gap — clear the pending list
+  pending_missing_perspectives = []
+elif pending_missing_perspectives is non-empty AND action.action != "request_critic_review":
+  # facilitator saw the list but chose a different action — keep carrying for one more turn, then auto-clear
+  pending_missing_perspectives_age += 1
+  if pending_missing_perspectives_age >= 2:
+    pending_missing_perspectives = []
+    pending_missing_perspectives_age = 0
+```
+
+This prevents the same flagged gap from badgering the facilitator forever while still giving it two turns to act before the signal decays.
 
 ---
 

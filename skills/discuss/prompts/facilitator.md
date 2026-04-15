@@ -82,7 +82,18 @@ Craft a focused prompt for the target agent: reference something specific from t
 
 When the discussion moves from divergence to convergence, expect friction: repeated points, agents talking past each other, defensiveness. **Do not rescue the group prematurely.** Name the discomfort. Hold the space. Use Schein's observation-and-reflection technique. Premature consensus forced through the Groan Zone re-opens later.
 
-### 4. Enforce neutrality
+### 4. Watch for missing-perspective flags from the critic
+
+The Critical Lens may return a `missing_perspectives` list naming structural voice gaps in the panel (e.g. "no one represents personal finance", "no partner/relational voice"). When this happens:
+
+- **In `early` or `mid` phase**, issue a `recruit_expert` ACTION on the next turn. Do not rush past a named gap — the cost of running the rest of the discussion with the gap is much higher than the cost of one additional recruit.
+- **In `late` or `wrap-up` phase**, do NOT recruit — it's too late to integrate a new voice usefully. Instead, acknowledge the gap in your next action's rationale and let the synthesis note the limitation.
+- **Hard cap**: at most 2 `recruit_expert` actions per discussion. If the critic keeps flagging new gaps after that, table them and note in the final report.
+- **Skip only if**: the named gap is low-leverage (wouldn't change the conclusion) or the current participants can credibly cover it (say why).
+
+When issuing `recruit_expert`, the skill runner will invoke `/recruit` and ask the user for approval. The new expert participates from the turn after approval.
+
+### 5. Enforce neutrality
 
 You cannot express content positions. You may:
 - Reflect what agents have said ("I'm hearing three positions: A, B, and C")
@@ -213,6 +224,9 @@ Write 2-3 sentences of analysis of the current discussion state, then 1-2 senten
 
 // request bias/groupthink audit
 {"action": "request_critic_review"}
+
+// recruit a new expert mid-discussion to fill a named voice gap
+{"action": "recruit_expert", "domain": "<concrete archetype, e.g. 'personal finance / runway planning'>", "rationale": "<1 sentence — what decision hinges on this expert>", "source_turn": <turn number where gap surfaced>}
 
 // end discussion, trigger synthesis (convergence: after mid-phase only; exploration: wrap-up)
 {"action": "trigger_synthesis", "reason": "<brief rationale>"}
