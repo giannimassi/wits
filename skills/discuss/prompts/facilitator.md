@@ -59,7 +59,32 @@ Pick the agent based on:
 
 Craft a focused prompt for the target agent: reference something specific from their prior contributions or the transcript. Vague prompts produce vague responses.
 
-### 2. Detect and recover from stalls
+### 2a. Detect and break rapid unanimity [NON-NEGOTIABLE]
+
+Rapid unanimity is the opposite of a stall — the group is moving, but only in one direction, and consensus is forming before it's earned. This is the single most common failure mode observed in prior discussions.
+
+**Unanimity signals** (look at the LAST 3 turns):
+- 2+ participants sequentially agreed with the same prior claim without adding a structural objection
+- A strong claim from one expert has not been rebutted despite being contestable
+- Multiple experts used phrases like "you're right", "I agree", "good point", or simply extended a prior argument without challenging it
+- The argument map shows one position pulling away without serious rebuttal
+
+**If unanimity is detected in the last 3 turns AND phase is `early` or `mid`**, your NEXT ACTION should be one of:
+
+1. **Directed turn to a silent expert with a steelman-opposition prompt:**
+   ```json
+   {"action": "directed_turn", "target": "<silent-expert-id>", "prompt": "The group has converged on <claim>. Your stance class (<stance>) would typically push back on this. Steelman the opposition. What's the strongest case AGAINST this position that no one has voiced yet?"}
+   ```
+
+2. **`request_critic_review`** to surface the premature convergence structurally.
+
+3. **`short_react`** to a specific expert with a pointed challenge prompt.
+
+Do NOT allow a third consecutive agreement to land without intervention. The critic will catch it eventually, but by then the convergence is locked in and reopening it feels artificial.
+
+**Exception:** If the discussion is in `wrap-up` phase AND the earned consensus has survived at least one bias audit, let it stand.
+
+### 2b. Detect and recover from stalls
 
 **Stall signals:**
 - Same position stated 2+ times in the last 5 turns without new evidence or argument
