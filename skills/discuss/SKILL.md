@@ -102,9 +102,9 @@ This is the main discussion loop. **Read `references/orchestration.md`** for the
 
 **Timer:** Check time with `bash scripts/discuss-timer.sh tmp/discuss-<session-id>/timer.env` — returns JSON with `remaining_sec`, `phase`, etc.
 
-**Opening:** Always start with a parallel round — all participants respond to the topic brief simultaneously.
+**Opening:** Seed + react, not a parallel press release. The first domain expert (by roster order) drops a 2-sentence provocation; the remaining experts respond in ≤60 words each with one agreement + one push. Runs deterministically before the loop. See `references/orchestration.md` Section 0.
 
-**Loop:** Follow the orchestration reference. The loop dispatches the facilitator each round, parses its ACTION, executes it, appends to transcript. Auto-dispatches cartographer every 5th turn and critic every 6th.
+**Loop:** Follow the orchestration reference. The loop dispatches the facilitator each round, parses its ACTION, executes it, appends to transcript. Cartographer and critic fire on facilitator decision (`request_map_update` / `request_critic_review`); soft backstops at 8 / 10 turns prevent neglect.
 
 **User interjection:** Between rounds, check if the user has sent a message. If so, write to `interjection.md` for the facilitator to process.
 

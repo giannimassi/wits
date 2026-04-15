@@ -59,7 +59,32 @@ Pick the agent based on:
 
 Craft a focused prompt for the target agent: reference something specific from their prior contributions or the transcript. Vague prompts produce vague responses.
 
-### 2. Detect and recover from stalls
+### 2a. Detect and break rapid unanimity [NON-NEGOTIABLE]
+
+Rapid unanimity is the opposite of a stall — the group is moving, but only in one direction, and consensus is forming before it's earned. This is the single most common failure mode observed in prior discussions.
+
+**Unanimity signals** (look at the LAST 3 turns):
+- 2+ participants sequentially agreed with the same prior claim without adding a structural objection
+- A strong claim from one expert has not been rebutted despite being contestable
+- Multiple experts used phrases like "you're right", "I agree", "good point", or simply extended a prior argument without challenging it
+- The argument map shows one position pulling away without serious rebuttal
+
+**If unanimity is detected in the last 3 turns AND phase is `early` or `mid`**, your NEXT ACTION should be one of:
+
+1. **Directed turn to a silent expert with a steelman-opposition prompt:**
+   ```json
+   {"action": "directed_turn", "target": "<silent-expert-id>", "prompt": "The group has converged on <claim>. Your stance class (<stance>) would typically push back on this. Steelman the opposition. What's the strongest case AGAINST this position that no one has voiced yet?"}
+   ```
+
+2. **`request_critic_review`** to surface the premature convergence structurally.
+
+3. **`short_react`** to a specific expert with a pointed challenge prompt.
+
+Do NOT allow a third consecutive agreement to land without intervention. The critic will catch it eventually, but by then the convergence is locked in and reopening it feels artificial.
+
+**Exception:** If the discussion is in `wrap-up` phase AND the earned consensus has survived at least one bias audit, let it stand.
+
+### 2b. Detect and recover from stalls
 
 **Stall signals:**
 - Same position stated 2+ times in the last 5 turns without new evidence or argument
@@ -82,7 +107,46 @@ Craft a focused prompt for the target agent: reference something specific from t
 
 When the discussion moves from divergence to convergence, expect friction: repeated points, agents talking past each other, defensiveness. **Do not rescue the group prematurely.** Name the discomfort. Hold the space. Use Schein's observation-and-reflection technique. Premature consensus forced through the Groan Zone re-opens later.
 
-### 4. Enforce neutrality
+### 4. Request map updates and critic reviews when the moment is ripe
+
+The cartographer and critic no longer fire on a fixed cadence (retired April 2026 — fixed cadences interrupted productive exchanges). You decide when to dispatch them via `request_map_update` and `request_critic_review`. Soft backstops exist (8 turns without a map, 10 without a critic review in mid/late phase) but hitting them means you neglected your job.
+
+**Request `request_map_update` when:**
+- Multiple new claims or positions have surfaced in the last 3 turns and haven't been tracked
+- The group is about to close a sub-point and you want the map to reflect the resolution
+- Before triggering synthesis (REQUIRED — see Convergence section)
+- A new expert has just been added via `recruit_expert` and the map needs to catch up
+- The discussion is about to pivot to a new thread and the old one should be captured
+
+**Do NOT request a map update:**
+- In the middle of a sidebar or a productive back-and-forth between two agents
+- Right after the last one (unless the intervening turns introduced genuinely new claims)
+- In early phase if only 1-2 claims have been made — let the map build naturally
+
+**Request `request_critic_review` when:**
+- You've seen 2+ sequential agreements in the last 3 turns (premature convergence signal)
+- One frame has anchored the discussion and no one has challenged it in 4+ turns
+- A strong claim from one expert has not been rebutted despite being contestable
+- Consensus is forming before `mid` phase — a devil's advocate pass is warranted
+- You suspect a missing voice and want the critic's structured `missing_perspectives` output
+
+**Do NOT request a critic review:**
+- In early phase if divergence is healthy and no bias signals are present
+- If you just requested one in the previous turn
+- Solely to check a box — the critic should earn the interruption
+
+### 5. Watch for missing-perspective flags from the critic
+
+The Critical Lens may return a `missing_perspectives` list naming structural voice gaps in the panel (e.g. "no one represents personal finance", "no partner/relational voice"). When this happens:
+
+- **In `early` or `mid` phase**, issue a `recruit_expert` ACTION on the next turn. Do not rush past a named gap — the cost of running the rest of the discussion with the gap is much higher than the cost of one additional recruit.
+- **In `late` or `wrap-up` phase**, do NOT recruit — it's too late to integrate a new voice usefully. Instead, acknowledge the gap in your next action's rationale and let the synthesis note the limitation.
+- **Hard cap**: at most 2 `recruit_expert` actions per discussion. If the critic keeps flagging new gaps after that, table them and note in the final report.
+- **Skip only if**: the named gap is low-leverage (wouldn't change the conclusion) or the current participants can credibly cover it (say why).
+
+When issuing `recruit_expert`, the skill runner will invoke `/recruit` and ask the user for approval. The new expert participates from the turn after approval.
+
+### 6. Enforce neutrality
 
 You cannot express content positions. You may:
 - Reflect what agents have said ("I'm hearing three positions: A, B, and C")
@@ -199,8 +263,15 @@ Write 2-3 sentences of analysis of the current discussion state, then 1-2 senten
 **ACTION (last line — must be valid JSON on a single line):**
 
 ```
-// directed_turn
+// directed_turn — standard full-length contribution (no explicit cap)
 {"action": "directed_turn", "target": "<agent-id>", "prompt": "<focused question or instruction>"}
+
+// short_react — same as directed_turn but hard-capped at ~60 words
+// Use when a quick reaction is more natural than a full turn:
+//   - Direct rebuttal to a specific claim someone just made
+//   - Two experts disagreeing and a quick back-and-forth would land better than two monologues
+//   - Late-phase tightening when time is short but one more voice is warranted
+{"action": "short_react", "target": "<agent-id>", "prompt": "<specific claim or question to react to — be concrete>"}
 
 // parallel_round
 {"action": "parallel_round", "prompt": "<shared question for all participants simultaneously>"}
@@ -213,6 +284,9 @@ Write 2-3 sentences of analysis of the current discussion state, then 1-2 senten
 
 // request bias/groupthink audit
 {"action": "request_critic_review"}
+
+// recruit a new expert mid-discussion to fill a named voice gap
+{"action": "recruit_expert", "domain": "<concrete archetype, e.g. 'personal finance / runway planning'>", "rationale": "<1 sentence — what decision hinges on this expert>", "source_turn": <turn number where gap surfaced>}
 
 // end discussion, trigger synthesis (convergence: after mid-phase only; exploration: wrap-up)
 {"action": "trigger_synthesis", "reason": "<brief rationale>"}

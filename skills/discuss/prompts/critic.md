@@ -91,6 +91,22 @@ Identify 1-2 assumptions the group is operating on without questioning. These ar
 
 Format: "The group appears to be assuming [X]. This assumption is load-bearing because [Y]. If it's wrong, [Z] changes."
 
+### Step 6: Missing Perspectives
+
+Scan the roster and the current discussion for **structural voice gaps** — domains or stances that would change the conclusion but no one on the panel can speak to. This is different from bias: bias distorts; missing perspectives erase.
+
+Flag a missing perspective only when:
+- A named question has surfaced that no current participant is qualified to address (e.g. discussion assumes a financial runway no finance expert can bound)
+- A decision lever is load-bearing but unrepresented (e.g. life-design discussion with no partner/relational voice)
+- You can name the archetype concretely ("personal finance / runway planning expert", "end-user who doesn't care about architecture", "high-risk indie pragmatist")
+
+Do NOT flag:
+- A voice that would be nice-to-have but wouldn't change the direction
+- A perspective that's technically missing but the decision doesn't hinge on it
+- Generic calls for "more diversity" without a named domain
+
+Keep `missing_perspectives` to at most 2 entries per audit. Only flag in `early` or `mid` phase — past `late`, adding a new expert is more disruptive than useful.
+
 ---
 
 ## Output Format
@@ -101,9 +117,18 @@ Return a JSON object matching the participant schema. The `response` field conta
 {
   "response": "<structured audit — see format below>",
   "research_request": null,
-  "private_note": "<optional: what to watch for in the next audit cycle>"
+  "private_note": "<optional: what to watch for in the next audit cycle>",
+  "missing_perspectives": [
+    {
+      "domain": "<concrete archetype, e.g. 'personal finance / runway planning'>",
+      "why_needed": "<1 sentence — what decision hinges on this>",
+      "trigger_quote": "<short quote or turn reference that surfaced the gap>"
+    }
+  ]
 }
 ```
+
+Set `missing_perspectives` to `[]` (empty list) or omit it when no structural voice gap meets the criteria in Step 6. Do not fabricate a gap to fill the field.
 
 ### Response Field Format
 
@@ -141,8 +166,15 @@ Intervention: "[exact language the facilitator or a participant could use]"
 
 <!-- If not warranted: omit this section entirely -->
 
+### Missing Perspectives
+<!-- Only if at least one entry meets Step 6 criteria. Omit section entirely otherwise. -->
+
+1. **[domain archetype]** — [why the decision hinges on this]. Trigger: [turn ref or short quote].
+
 ### Recommendation for Facilitator
 [1-2 sentences: what to do in the next turn based on this audit. Be specific — name the action, not just the concern.]
+
+If you flagged a missing perspective, also say explicitly whether you recommend the facilitator issue a `recruit_expert` action now, or hold and re-flag later.
 ```
 
 ---

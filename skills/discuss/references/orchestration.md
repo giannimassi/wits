@@ -10,11 +10,81 @@
 
 ---
 
+## 0. Opening — Seed + React (not a parallel press release)
+
+Before entering the main loop, the orchestrator runs a **seed+react opening** that replaces the old parallel round. This is not a facilitator ACTION; it runs deterministically once, then control passes to the facilitator at turn 1.
+
+### Why replaced the parallel opening
+
+Observed failure mode (4 transcripts, April 2026): parallel openings produced 4 independent 200–700 word monologues with zero cross-reference. Each expert wrote their own position statement as if the others didn't exist. The opening round should create positioning and tension; instead it created parallel press releases.
+
+### Steps
+
+1. **Pick the seed author**: first non-core expert in `team.json` `agents` array (index 3 or later — after facilitator/cartographer/critic). In practice this is the first domain expert in recruitment order. If multiple stance classes exist, prefer the expert whose stance is listed as most provocative or divergent in their persona metadata (field: `stance_class` if present).
+
+2. **Dispatch the seed author** with `turn_style: "opener_seed"`. Prompt:
+   ```
+   You're opening a structured discussion on: <topic_brief>.
+   Mode: <mode>.
+
+   In EXACTLY 2 sentences, state your sharpest, most position-taking view on this. Be specific. Don't summarize the topic — take a stance the other experts will need to react to.
+   ```
+   Participant is instructed to keep to 2 sentences (cap ~80 words). Skill runner enforces the cap same way as `short_react` (retry once if over).
+
+3. **Dispatch remaining experts in parallel** with `turn_style: "opener_react"`. Each receives the seed's 2 sentences. Prompt:
+   ```
+   <seed_author_name> opened with:
+   > "<seed_text>"
+
+   React in 60 words or less. Structure:
+   - One specific thing you agree with (name the claim)
+   - One specific thing you'd push back on (name the claim and why)
+
+   Do NOT state your own full position yet. You'll get that turn shortly. This is positioning against <seed_author_name>'s frame.
+   ```
+   Cartographer and critic do NOT participate in the opener. Each reactor's response is hard-capped at 75 words (60-target + 15 buffer).
+
+4. **Append to transcript** in roster order (seed first, then reactors):
+   ```markdown
+   ## Opening — Seed + React
+
+   ### <seed_author_name> (<role>) — seed
+   <2-sentence provocation>
+
+   ### <reactor_1_name> (<role>) — react (≤60w)
+   <reaction>
+
+   ### <reactor_2_name> (<role>) — react (≤60w)
+   <reaction>
+
+   ---
+   ```
+
+5. **Run the cartographer seed** (Section 10, turn 1 rule). The opening counts as turn 1 for cartographer purposes.
+
+6. **Enter main loop** with `turn = 1` (not 0 — the opener counts as the first content round). Facilitator's first ACTION dispatches turn 2.
+
+### What this achieves
+
+- Seed author takes a stance; reactors MUST position against it. No more press releases.
+- Each reactor's forced structure (one agreement + one push) guarantees cross-reference.
+- Opening completes in ~3 dispatches instead of 4 parallel monologues — also faster.
+- The seed creates a focal point the facilitator can return to in later turns ("Dee's opening frame — still live?").
+
+### Exception: exploration mode with --size 0
+
+When there are no domain experts (`--size 0`) the opener is skipped; the facilitator is dispatched at turn 1 with instruction to use ORID Objective questions to ground the core team in shared facts. This path exists mostly for testing and is rare in practice.
+
+---
+
 ## 1. Discussion Loop — Full Pseudocode
 
 ```
+# Opening (Section 0) has already run by the time we reach this loop.
+# turn starts at 1, not 0 — opener counted as turn 1.
+
 INIT:
-  turn = 0
+  turn = 1  # opener already counted
   consecutive_failures = 0
   converged = false
   wrap_up_turns = 0          # turns taken since entering wrap-up phase
@@ -22,6 +92,9 @@ INIT:
   last_critic_turn = 0
   pending_research = {}      # map of agent_id -> research result (ready to inject)
   active_research_count = 0  # global cap: max 2 concurrent background tasks
+  recruit_expert_count = 0   # per-session cap: max 2 mid-discussion recruits
+  pending_missing_perspectives = []  # from last critic audit; injected into next facilitator context
+  new_participant = null     # set when a recruit_expert was approved in the prior turn
 
 REPEAT until converged == true:
 
@@ -69,7 +142,10 @@ REPEAT until converged == true:
     team_roster:      <agent id + name + role, from team.json>,
     turn_stats:       <per-agent turn count, derived from transcript>,
     transcript_summary: transcript_summary,
-    interjection:     interjection  # empty string if none
+    interjection:     interjection,  # empty string if none
+    missing_perspectives: pending_missing_perspectives,  # from last critic audit, empty if none
+    new_participant:  new_participant,  # name of just-added expert if any, null otherwise
+    recruit_budget_remaining: 2 - recruit_expert_count  # how many more recruit_expert actions allowed
   }
 
   # Step 4: Dispatch facilitator
@@ -103,18 +179,23 @@ REPEAT until converged == true:
   # Step 8: Append result to transcript
   append_to_transcript(result)
 
-  # Step 9: Auto-dispatch cartographer — after opening round, then every 3rd turn
-  if (turn == 1 or (turn > 1 and (turn - 1) % 3 == 0)) and action.action != "request_map_update":
+  # Step 9: Cartographer backstop (every ≥8 turns without update)
+  # The opening already ran the cartographer seed (Section 0 step 5). The facilitator
+  # normally drives map updates via request_map_update ACTION; this block is the backstop.
+  if turn - last_cartographer_turn >= 8 and action.action != "request_map_update":
     map_result = dispatch_cartographer(last_5_turns, current_map)
     append_to_transcript(map_result)
     last_cartographer_turn = turn
 
-  # Step 10: Auto-dispatch critic — adaptive interval based on discussion length
-  # Short discussions (≤5min): every 3rd turn. Long discussions (>10min): every 6th turn.
-  critic_interval = max(3, min(6, DURATION_SEC / 60 / 3))  # ~3 for 5min, ~5 for 15min
-  if turn % critic_interval == 0 and action.action != "request_critic_review":
+  # Step 10: Critic backstop (every ≥10 turns without review, mid/late phase only)
+  # The facilitator is expected to request critic reviews via request_critic_review ACTION
+  # when groupthink/anchoring is detected. This backstop only catches neglect.
+  if (turn - last_critic_turn >= 10
+      and action.action != "request_critic_review"
+      and timer.phase in ("mid", "late")):
     critic_result = dispatch_critic(last_6_turns)
     append_to_transcript(critic_result)
+    extract_missing_perspectives(critic_result)  # see Section 10 Post-Critic Hook
     last_critic_turn = turn
 
   # Step 11: Check convergence
@@ -167,10 +248,12 @@ A well-behaved facilitator turn is typically 1500-3000 characters. Overflow sign
 | Action | Required fields |
 |--------|-----------------|
 | `directed_turn` | `action`, `target` (agent id), `prompt` |
+| `short_react` | `action`, `target` (agent id), `prompt` |
 | `parallel_round` | `action`, `prompt` |
 | `sidebar` | `action`, `agent_a`, `agent_b`, `topic`, `turns` |
 | `request_map_update` | `action` |
 | `request_critic_review` | `action` |
+| `recruit_expert` | `action`, `domain`, `rationale`, `source_turn` |
 | `trigger_synthesis` | `action`, `reason` |
 
 **Optional on any action:** `"observed": "<string>"` — present only when an interjection was in the facilitator context and the facilitator is acknowledging it.
@@ -180,6 +263,7 @@ A well-behaved facilitator turn is typically 1500-3000 characters. Overflow sign
 - `agent_a` and `agent_b` must be different agent ids present in `team.json`; neither can be `facilitator` or `cartographer` or `critic`
 - `turns` must be integer 2-6; if outside range, clamp to [2, 6]
 - `trigger_synthesis` is rejected if current `timer.phase` is `"early"` — log warning, treat as MALFORMED and retry
+- `recruit_expert` is rejected if current `timer.phase` is `"late"` or `"wrap-up"`, or if `recruit_expert_count >= 2` for this session — log reason, append `[recruit_expert rejected: <reason>]` to transcript, skip turn (do NOT increment turn counter, do NOT retry facilitator)
 
 ---
 
@@ -204,6 +288,28 @@ A well-behaved facilitator turn is typically 1500-3000 characters. Overflow sign
 
 ---
 ```
+
+### 3a-b. `short_react` (brief reaction, ≤60 words)
+
+Same dispatch mechanics as `directed_turn`, but participant is instructed to reply in **60 words or less**. Used by the facilitator when a quick reaction is more natural than a full turn — rebuttals, quick agreements with a push, late-phase tightening.
+
+1. Look up target agent in `team.json`
+2. Build participant context (persona, private notes, transcript, research-if-any) — same as `directed_turn`
+3. Dispatch with a `style: "short_react"` flag in the participant context. The participant prompt template has a conditional block that enforces the cap.
+4. After response: check `len(response.response.split()) <= 75` (15-word buffer for edge cases). If over-cap, log `[short_react over cap: <N> words — Turn <turn>]` and retry ONCE with a stricter prompt prefix: `"Your prior response was too long. Hard cap: 60 words. Respond in one or two short sentences. Nothing else."` If still over-cap, accept the response but note the overrun in the transcript.
+5. Append to transcript:
+   ```markdown
+   ## Turn N — facilitator → <agent-name> [short_react, <phase>, <remaining_human> remaining]
+   **Prompt:** "<facilitator's prompt text>"
+   ### <agent-name> (≤60 words)
+   <response content>
+
+   ---
+   ```
+
+**Why enforce the cap at the skill-runner level, not just in the prompt**: participants routinely overshoot word caps. A single prompt instruction yields 150–200 words in practice. Rejecting-and-retrying once is the only reliable enforcement.
+
+---
 
 ### 3b. `parallel_round`
 
@@ -306,6 +412,66 @@ A mini-loop between two agents with the facilitator summarizing at the end.
 2. Set `converged = true`
 3. Exit the discussion loop
 4. Proceed to Phase 3
+
+### 3g. `recruit_expert` (mid-discussion panel expansion)
+
+Invoked when the facilitator names a structural voice gap — usually in response to a `missing_perspectives` flag from the critic (see Section 11). The handler invokes `/recruit` to produce a persona, asks the user for approval, and appends to the roster.
+
+**Preconditions** (validated in Section 2 before reaching this handler):
+- `timer.phase` is `"early"` or `"mid"`
+- `recruit_expert_count < 2` (per-session cap; initialize at loop start)
+
+**Steps:**
+
+1. **Invoke `/recruit create`** with the `domain` field from the action. Pass the `rationale` as additional context so the recruit skill can evaluate reuse of existing experts. Recruit follows its normal search → evaluate → offer → reuse/create flow and returns:
+   ```
+   {persona_name, persona_slug, stance, model_recommendation, persona_file_path}
+   ```
+
+2. **Ask the user** using the same mechanism SKILL.md Step 4 uses for initial roster confirmation. Prompt:
+   ```
+   Critical Lens flagged a missing perspective mid-discussion:
+     Domain:    <action.domain>
+     Rationale: <action.rationale> (surfaced at turn <source_turn>)
+
+   Proposed expert: <persona_name> — <stance>, <model_recommendation>
+   Knowledge base: <persona_file_path>
+
+   Add to the panel? [y=add / n=decline / skip=ignore for now]
+   ```
+
+3. **On `y`**:
+   - Append the persona to `team.json` `agents` array (end of list, preserving existing order)
+   - Increment `recruit_expert_count`
+   - Append to transcript:
+     ```
+     ## Panel Update (after Turn N)
+     **Added:** <persona_name> (<role>) — model: <model>
+     **Reason:** <action.rationale>
+     **Flagged by:** Critical Lens, turn <source_turn>
+     ---
+     ```
+   - The new expert is visible to `turn_stats`, fairness tracking, and all future dispatches from the next loop iteration onward.
+   - On the next facilitator turn, inject an additional context field `new_participant: <persona_name>` so the facilitator can introduce them (e.g. via a targeted `directed_turn` asking them to speak to the gap).
+
+4. **On `n` (decline)**:
+   - Do NOT add to `team.json`
+   - Increment `recruit_expert_count` anyway (declines count toward the cap to prevent repeated asks)
+   - Append to transcript: `**Panel update declined:** user opted not to add <domain>; gap noted for final report`
+   - Flag in session metadata so the synthesis includes "known gaps" section
+
+5. **On `skip`**:
+   - Do NOT add, do NOT increment the counter
+   - Append to transcript: `**Panel update deferred:** <domain> held; critic may re-flag`
+
+6. **Auto-approve mode** (`--auto-expand` flag, if set):
+   - The first `recruit_expert` per session auto-approves without asking. Subsequent recruits still prompt.
+
+**Turn counting:** a `recruit_expert` action does NOT increment the turn counter. It's a panel operation, not a content turn. Cartographer/critic auto-dispatches are also suppressed for this action.
+
+**Failure modes:**
+- `/recruit` cannot produce a viable persona → log `[recruit_expert for <domain> failed: <reason>]`, do not increment counter, continue
+- User response timeout (>60s) → treat as `skip`, continue
 
 ---
 
@@ -470,48 +636,95 @@ if private_note is non-empty:
 
 ---
 
-## 10. Auto-Dispatch: Cartographer and Critic
+## 10. Cartographer and Critic — Facilitator-Driven with Soft Backstops
 
-These are triggered by the skill runner unconditionally, regardless of facilitator ACTION.
+The cartographer and critic fire primarily on facilitator decision (`request_map_update` / `request_critic_review`), not on a fixed turn cadence. The facilitator knows the momentum of the discussion; a hardcoded "every 3 turns" fires mid-sidebar or mid-productive exchange and breaks the conversation.
 
-### Cartographer Auto-Dispatch (after opening + every 3rd turn)
+Soft backstops protect against a facilitator that forgets to audit: if too many turns pass without a map update or critic review, the skill runner forces one after the current turn's main action is appended.
 
-The cartographer MUST run early to seed the argument map. Auto-dispatch fires:
-- **After the opening round** (turn == 1) — seeds the map with initial claims
-- **Every 3rd turn thereafter** ((turn - 1) % 3 == 0) — keeps the map current
+### Cartographer Seed (runs during Section 0 opener)
 
-```
-if (turn == 1 OR (turn > 1 AND (turn - 1) % 3 == 0)) AND action.action != "request_map_update":
-  dispatch cartographer with:
-    - last 5 transcript turns (not the full transcript — cartographer is context-efficient)
-    - current contents of argument-map.md
-  append result to argument-map.md
-  append abbreviated transcript notice:
-    "## Map Update (after Turn N)\n### cartographer\n<update>\n\n---"
-```
-
-If the facilitator's action this turn IS `request_map_update`, skip the auto-dispatch (the manual dispatch already handles it). Do NOT dispatch twice.
-
-### Critic Auto-Dispatch (adaptive interval)
-
-The critic interval scales with discussion length to ensure at least one audit in short discussions:
+The cartographer MUST run once after the opening seed+react to initialize the argument map — no facilitator permission required for this. This runs as step 5 of Section 0 (opener), immediately after the seed and reactor turns are appended:
 
 ```
-critic_interval = max(3, min(6, DURATION_SEC / 60 / 3))
-# 5-minute discussion → interval 3 (audit at turn 3, 6, 9...)
-# 10-minute discussion → interval 3-4
-# 15+ minute discussion → interval 5-6
-
-if turn % critic_interval == 0 AND action.action != "request_critic_review":
-  dispatch critic with:
-    - last 6 transcript turns
-  append result to transcript:
-    "## Critical Review (after Turn N)\n### critic\n<review>\n\n---"
+# Called from the end of Section 0 (opener), before entering the main loop.
+dispatch cartographer with:
+  - the opening seed+react transcript
+  - empty argument-map.md
+append result to argument-map.md AND to transcript as:
+  "## Map Update (after Opening — seed)\n### cartographer\n<update>\n\n---"
+last_cartographer_turn = 1
 ```
 
-Same skip rule: if facilitator already requested critic review this turn, skip auto-dispatch.
+After this seed, all further cartographer dispatches are facilitator-initiated (`request_map_update`) or triggered by the backstop below.
 
-**Coordination note**: both cartographer and critic can trigger on the same turn. In that case, dispatch both — cartographer first, then critic. Each receives the transcript state after the turn's main action was appended.
+### Cartographer Backstop
+
+```
+turns_since_map_update = turn - last_cartographer_turn
+if turns_since_map_update >= 8 AND action.action != "request_map_update":
+  log "[Cartographer backstop fired — last update was turn <last_cartographer_turn>]"
+  dispatch cartographer (same mechanics as Section 3d)
+  last_cartographer_turn = turn
+```
+
+8 turns is the soft ceiling. The facilitator is expected to request map updates more often than that — the backstop is a safety net, not the primary mechanism. If it fires more than once per discussion, the facilitator prompt is failing to trigger map updates when it should (see facilitator.md "When to request a map update").
+
+### Critic Backstop
+
+```
+turns_since_critic_review = turn - last_critic_turn
+if turns_since_critic_review >= 10 AND action.action != "request_critic_review" AND timer.phase in ("mid", "late"):
+  log "[Critic backstop fired — last review was turn <last_critic_turn>]"
+  dispatch critic (same mechanics as Section 3e)
+  last_critic_turn = turn
+```
+
+The critic backstop only fires in `mid` or `late` phase — early-phase audits are premature (groupthink can't form in 2 turns). If a discussion reaches wrap-up without a critic dispatch, the facilitator has failed its job; the skill runner logs it in the final report.
+
+### Why No Fixed Cadence
+
+Observed failure mode (4 transcripts, April 2026): fixed-cadence auto-dispatch interrupted productive sidebars and forced map updates in the middle of contested exchanges. The map update arrived when the group was mid-disagreement; by the time cartographer finished, the momentum was gone.
+
+The facilitator sees the state of the discussion and decides when an audit would land well. This is the same pattern used elsewhere in the skill — process decisions belong to the facilitator, mechanics to the skill runner.
+
+### Coordination Note
+
+If both backstops fire on the same turn: dispatch cartographer first, then critic. Each receives the transcript state after the turn's main action was appended.
+
+### Post-Critic Hook
+See the next subsection for `missing_perspectives` handling — this runs after ANY critic dispatch (backstop, facilitator-initiated, or opening-audit via future extension).
+
+### Post-Critic Hook: Missing Perspectives Extraction
+
+After any critic dispatch (auto or manual via `request_critic_review`), parse the critic's JSON response for a `missing_perspectives` field:
+
+```
+critic_response = dispatch_critic(...)
+if critic_response.missing_perspectives is a non-empty list:
+  # Filter out perspectives the critic itself recommended holding (see critic.md Recommendation section)
+  flaggable = [p for p in critic_response.missing_perspectives if not p.hold_recommendation]
+  pending_missing_perspectives = flaggable
+else:
+  pending_missing_perspectives = []
+```
+
+`pending_missing_perspectives` is injected into the NEXT facilitator context (not the current turn's — the facilitator already dispatched). The facilitator reads it, decides whether to issue `recruit_expert`, and if so, names the gap in the action. After the facilitator acts on (or explicitly dismisses) the list, it is cleared:
+
+```
+# After parsing this turn's facilitator action:
+if action.action == "recruit_expert":
+  # facilitator acted on a flagged gap — clear the pending list
+  pending_missing_perspectives = []
+elif pending_missing_perspectives is non-empty AND action.action != "request_critic_review":
+  # facilitator saw the list but chose a different action — keep carrying for one more turn, then auto-clear
+  pending_missing_perspectives_age += 1
+  if pending_missing_perspectives_age >= 2:
+    pending_missing_perspectives = []
+    pending_missing_perspectives_age = 0
+```
+
+This prevents the same flagged gap from badgering the facilitator forever while still giving it two turns to act before the signal decays.
 
 ---
 
