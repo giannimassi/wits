@@ -10,11 +10,81 @@
 
 ---
 
+## 0. Opening — Seed + React (not a parallel press release)
+
+Before entering the main loop, the orchestrator runs a **seed+react opening** that replaces the old parallel round. This is not a facilitator ACTION; it runs deterministically once, then control passes to the facilitator at turn 1.
+
+### Why replaced the parallel opening
+
+Observed failure mode (4 transcripts, April 2026): parallel openings produced 4 independent 200–700 word monologues with zero cross-reference. Each expert wrote their own position statement as if the others didn't exist. The opening round should create positioning and tension; instead it created parallel press releases.
+
+### Steps
+
+1. **Pick the seed author**: first non-core expert in `team.json` `agents` array (index 3 or later — after facilitator/cartographer/critic). In practice this is the first domain expert in recruitment order. If multiple stance classes exist, prefer the expert whose stance is listed as most provocative or divergent in their persona metadata (field: `stance_class` if present).
+
+2. **Dispatch the seed author** with `turn_style: "opener_seed"`. Prompt:
+   ```
+   You're opening a structured discussion on: <topic_brief>.
+   Mode: <mode>.
+
+   In EXACTLY 2 sentences, state your sharpest, most position-taking view on this. Be specific. Don't summarize the topic — take a stance the other experts will need to react to.
+   ```
+   Participant is instructed to keep to 2 sentences (cap ~80 words). Skill runner enforces the cap same way as `short_react` (retry once if over).
+
+3. **Dispatch remaining experts in parallel** with `turn_style: "opener_react"`. Each receives the seed's 2 sentences. Prompt:
+   ```
+   <seed_author_name> opened with:
+   > "<seed_text>"
+
+   React in 60 words or less. Structure:
+   - One specific thing you agree with (name the claim)
+   - One specific thing you'd push back on (name the claim and why)
+
+   Do NOT state your own full position yet. You'll get that turn shortly. This is positioning against <seed_author_name>'s frame.
+   ```
+   Cartographer and critic do NOT participate in the opener. Each reactor's response is hard-capped at 75 words (60-target + 15 buffer).
+
+4. **Append to transcript** in roster order (seed first, then reactors):
+   ```markdown
+   ## Opening — Seed + React
+
+   ### <seed_author_name> (<role>) — seed
+   <2-sentence provocation>
+
+   ### <reactor_1_name> (<role>) — react (≤60w)
+   <reaction>
+
+   ### <reactor_2_name> (<role>) — react (≤60w)
+   <reaction>
+
+   ---
+   ```
+
+5. **Run the cartographer seed** (Section 10, turn 1 rule). The opening counts as turn 1 for cartographer purposes.
+
+6. **Enter main loop** with `turn = 1` (not 0 — the opener counts as the first content round). Facilitator's first ACTION dispatches turn 2.
+
+### What this achieves
+
+- Seed author takes a stance; reactors MUST position against it. No more press releases.
+- Each reactor's forced structure (one agreement + one push) guarantees cross-reference.
+- Opening completes in ~3 dispatches instead of 4 parallel monologues — also faster.
+- The seed creates a focal point the facilitator can return to in later turns ("Dee's opening frame — still live?").
+
+### Exception: exploration mode with --size 0
+
+When there are no domain experts (`--size 0`) the opener is skipped; the facilitator is dispatched at turn 1 with instruction to use ORID Objective questions to ground the core team in shared facts. This path exists mostly for testing and is rare in practice.
+
+---
+
 ## 1. Discussion Loop — Full Pseudocode
 
 ```
+# Opening (Section 0) has already run by the time we reach this loop.
+# turn starts at 1, not 0 — opener counted as turn 1.
+
 INIT:
-  turn = 0
+  turn = 1  # opener already counted
   consecutive_failures = 0
   converged = false
   wrap_up_turns = 0          # turns taken since entering wrap-up phase
@@ -109,16 +179,10 @@ REPEAT until converged == true:
   # Step 8: Append result to transcript
   append_to_transcript(result)
 
-  # Step 9: Cartographer seed (turn 1 only) + backstop (every ≥8 turns without update)
-  # See Section 10 for the full rationale. The facilitator normally drives map updates
-  # via request_map_update ACTION; this block only handles the seed and backstop.
-  if turn == 1 and action.action != "request_map_update":
-    # Seed: always run cartographer once after opening to initialize the map
-    map_result = dispatch_cartographer(opening_transcript, empty_map)
-    append_to_transcript(map_result)
-    last_cartographer_turn = 1
-  elif turn - last_cartographer_turn >= 8 and action.action != "request_map_update":
-    # Backstop: facilitator has gone 8 turns without requesting a map update
+  # Step 9: Cartographer backstop (every ≥8 turns without update)
+  # The opening already ran the cartographer seed (Section 0 step 5). The facilitator
+  # normally drives map updates via request_map_update ACTION; this block is the backstop.
+  if turn - last_cartographer_turn >= 8 and action.action != "request_map_update":
     map_result = dispatch_cartographer(last_5_turns, current_map)
     append_to_transcript(map_result)
     last_cartographer_turn = turn
@@ -578,18 +642,18 @@ The cartographer and critic fire primarily on facilitator decision (`request_map
 
 Soft backstops protect against a facilitator that forgets to audit: if too many turns pass without a map update or critic review, the skill runner forces one after the current turn's main action is appended.
 
-### Cartographer Seed (turn 1 only)
+### Cartographer Seed (runs during Section 0 opener)
 
-The cartographer MUST run once after the opening to seed the argument map — no facilitator permission required for this. This is the only hardcoded cartographer dispatch:
+The cartographer MUST run once after the opening seed+react to initialize the argument map — no facilitator permission required for this. This runs as step 5 of Section 0 (opener), immediately after the seed and reactor turns are appended:
 
 ```
-if turn == 1 AND action.action != "request_map_update":
-  dispatch cartographer with:
-    - the opening round transcript
-    - empty argument-map.md
-  append result to argument-map.md AND to transcript as:
-    "## Map Update (after Turn 1 — seed)\n### cartographer\n<update>\n\n---"
-  last_cartographer_turn = 1
+# Called from the end of Section 0 (opener), before entering the main loop.
+dispatch cartographer with:
+  - the opening seed+react transcript
+  - empty argument-map.md
+append result to argument-map.md AND to transcript as:
+  "## Map Update (after Opening — seed)\n### cartographer\n<update>\n\n---"
+last_cartographer_turn = 1
 ```
 
 After this seed, all further cartographer dispatches are facilitator-initiated (`request_map_update`) or triggered by the backstop below.

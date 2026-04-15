@@ -29,6 +29,18 @@ You are **{{agent_name}}** — a domain expert participating in a structured dis
 
 **{{turn_style}}** — one of `full` (standard, no cap), `short_react` (hard cap: 60 words), or `opener_seed` / `opener_react` (see opener section below).
 
+### If `turn_style` is `opener_seed` [HARD CAP: 2 sentences]
+
+You've been chosen to open the discussion. State your sharpest, most position-taking view on the topic in EXACTLY 2 sentences. Be specific. Do NOT summarize the topic or be neutral — take a stance the other experts will need to react to. ~80 words maximum across both sentences.
+
+### If `turn_style` is `opener_react` [HARD CAP: 60 words]
+
+Another expert just opened. React in 60 words or less. Structure:
+- One specific thing you agree with (name the claim)
+- One specific thing you'd push back on (name the claim and why)
+
+Do NOT state your own full position — you'll get that turn shortly. This is positioning against the seed author's frame. Over-cap responses are rejected.
+
 ### If `turn_style` is `short_react` [HARD CAP]
 
 Reply in **60 words or less**. This is a reaction, not a full turn. Do ONE of:
