@@ -49,6 +49,41 @@
       "expected_output": "Should NOT trigger discuss. This is a specific coding task, not a discussion topic.",
       "should_trigger": false,
       "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "/discuss Should we rewrite the billing system in Rust? --mode converge --duration 8m",
+      "expected_output": "Opening is seed+react (NOT parallel press releases): one domain expert drops a 2-sentence provocation, remaining experts respond in ≤60 words each with one agreement + one push. Transcript header reads '## Opening — Seed + React'. Reactor turns show '(≤60w)' in their headers and each reactor explicitly names a claim from the seed to agree with and one to push on.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "/discuss React Server Components vs Astro vs Next.js for our docs site. --mode converge --duration 10m",
+      "expected_output": "During the discussion, after a strong claim is made and another expert wants to rebut directly, the facilitator uses short_react (not directed_turn). The transcript shows at least one turn header with '[short_react, ...]' marker and a response under 60 words. Hard cap is enforced by the skill runner (retry once if over).",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "/discuss Should I leave my stable job for a Series A startup paying 30% more? I have a mortgage. --mode converge --duration 15m",
+      "expected_output": "Panel initially lacks a personal-finance / runway perspective. During the discussion the Critical Lens emits a missing_perspectives entry naming the gap (e.g. 'personal finance / runway planning'). The facilitator issues a recruit_expert ACTION in the next turn; the orchestrator invokes /recruit, prompts the user, and on approval appends the new expert to team.json. A 'Panel Update' section appears in the transcript and the new expert participates from the following turn. Cap: at most 2 recruit_expert actions per session.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "/discuss Should we adopt Kubernetes for our 3-service backend? --mode converge --duration 6m",
+      "expected_output": "If 2+ sequential agreements appear in the last 3 turns during early/mid phase, the facilitator intervenes on the next action — either a directed_turn to a silent expert with an explicit steelman-opposition prompt, a request_critic_review, or a short_react challenge. A third consecutive 'you're right' turn does NOT appear in the transcript.",
+      "should_trigger": true,
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "/discuss What's the right product roadmap for the next quarter given our current traction? --mode explore --duration 20m",
+      "expected_output": "Cartographer does NOT auto-dispatch on a fixed turn cadence (no 3rd/5th-turn interruptions). Cartographer fires on facilitator's request_map_update ACTION or via backstop after 8 turns without a map update. Critic fires on request_critic_review or via backstop after 10 turns in mid/late phase. Map Update and Critical Review sections in transcript correspond to facilitator-initiated requests, not fixed-interval auto-dispatch.",
+      "should_trigger": true,
+      "files": []
     }
   ]
 }
