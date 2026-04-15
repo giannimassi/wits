@@ -109,18 +109,29 @@ REPEAT until converged == true:
   # Step 8: Append result to transcript
   append_to_transcript(result)
 
-  # Step 9: Auto-dispatch cartographer — after opening round, then every 3rd turn
-  if (turn == 1 or (turn > 1 and (turn - 1) % 3 == 0)) and action.action != "request_map_update":
+  # Step 9: Cartographer seed (turn 1 only) + backstop (every ≥8 turns without update)
+  # See Section 10 for the full rationale. The facilitator normally drives map updates
+  # via request_map_update ACTION; this block only handles the seed and backstop.
+  if turn == 1 and action.action != "request_map_update":
+    # Seed: always run cartographer once after opening to initialize the map
+    map_result = dispatch_cartographer(opening_transcript, empty_map)
+    append_to_transcript(map_result)
+    last_cartographer_turn = 1
+  elif turn - last_cartographer_turn >= 8 and action.action != "request_map_update":
+    # Backstop: facilitator has gone 8 turns without requesting a map update
     map_result = dispatch_cartographer(last_5_turns, current_map)
     append_to_transcript(map_result)
     last_cartographer_turn = turn
 
-  # Step 10: Auto-dispatch critic — adaptive interval based on discussion length
-  # Short discussions (≤5min): every 3rd turn. Long discussions (>10min): every 6th turn.
-  critic_interval = max(3, min(6, DURATION_SEC / 60 / 3))  # ~3 for 5min, ~5 for 15min
-  if turn % critic_interval == 0 and action.action != "request_critic_review":
+  # Step 10: Critic backstop (every ≥10 turns without review, mid/late phase only)
+  # The facilitator is expected to request critic reviews via request_critic_review ACTION
+  # when groupthink/anchoring is detected. This backstop only catches neglect.
+  if (turn - last_critic_turn >= 10
+      and action.action != "request_critic_review"
+      and timer.phase in ("mid", "late")):
     critic_result = dispatch_critic(last_6_turns)
     append_to_transcript(critic_result)
+    extract_missing_perspectives(critic_result)  # see Section 10 Post-Critic Hook
     last_critic_turn = turn
 
   # Step 11: Check convergence
@@ -538,48 +549,64 @@ if private_note is non-empty:
 
 ---
 
-## 10. Auto-Dispatch: Cartographer and Critic
+## 10. Cartographer and Critic — Facilitator-Driven with Soft Backstops
 
-These are triggered by the skill runner unconditionally, regardless of facilitator ACTION.
+The cartographer and critic fire primarily on facilitator decision (`request_map_update` / `request_critic_review`), not on a fixed turn cadence. The facilitator knows the momentum of the discussion; a hardcoded "every 3 turns" fires mid-sidebar or mid-productive exchange and breaks the conversation.
 
-### Cartographer Auto-Dispatch (after opening + every 3rd turn)
+Soft backstops protect against a facilitator that forgets to audit: if too many turns pass without a map update or critic review, the skill runner forces one after the current turn's main action is appended.
 
-The cartographer MUST run early to seed the argument map. Auto-dispatch fires:
-- **After the opening round** (turn == 1) — seeds the map with initial claims
-- **Every 3rd turn thereafter** ((turn - 1) % 3 == 0) — keeps the map current
+### Cartographer Seed (turn 1 only)
+
+The cartographer MUST run once after the opening to seed the argument map — no facilitator permission required for this. This is the only hardcoded cartographer dispatch:
 
 ```
-if (turn == 1 OR (turn > 1 AND (turn - 1) % 3 == 0)) AND action.action != "request_map_update":
+if turn == 1 AND action.action != "request_map_update":
   dispatch cartographer with:
-    - last 5 transcript turns (not the full transcript — cartographer is context-efficient)
-    - current contents of argument-map.md
-  append result to argument-map.md
-  append abbreviated transcript notice:
-    "## Map Update (after Turn N)\n### cartographer\n<update>\n\n---"
+    - the opening round transcript
+    - empty argument-map.md
+  append result to argument-map.md AND to transcript as:
+    "## Map Update (after Turn 1 — seed)\n### cartographer\n<update>\n\n---"
+  last_cartographer_turn = 1
 ```
 
-If the facilitator's action this turn IS `request_map_update`, skip the auto-dispatch (the manual dispatch already handles it). Do NOT dispatch twice.
+After this seed, all further cartographer dispatches are facilitator-initiated (`request_map_update`) or triggered by the backstop below.
 
-### Critic Auto-Dispatch (adaptive interval)
-
-The critic interval scales with discussion length to ensure at least one audit in short discussions:
+### Cartographer Backstop
 
 ```
-critic_interval = max(3, min(6, DURATION_SEC / 60 / 3))
-# 5-minute discussion → interval 3 (audit at turn 3, 6, 9...)
-# 10-minute discussion → interval 3-4
-# 15+ minute discussion → interval 5-6
-
-if turn % critic_interval == 0 AND action.action != "request_critic_review":
-  dispatch critic with:
-    - last 6 transcript turns
-  append result to transcript:
-    "## Critical Review (after Turn N)\n### critic\n<review>\n\n---"
+turns_since_map_update = turn - last_cartographer_turn
+if turns_since_map_update >= 8 AND action.action != "request_map_update":
+  log "[Cartographer backstop fired — last update was turn <last_cartographer_turn>]"
+  dispatch cartographer (same mechanics as Section 3d)
+  last_cartographer_turn = turn
 ```
 
-Same skip rule: if facilitator already requested critic review this turn, skip auto-dispatch.
+8 turns is the soft ceiling. The facilitator is expected to request map updates more often than that — the backstop is a safety net, not the primary mechanism. If it fires more than once per discussion, the facilitator prompt is failing to trigger map updates when it should (see facilitator.md "When to request a map update").
 
-**Coordination note**: both cartographer and critic can trigger on the same turn. In that case, dispatch both — cartographer first, then critic. Each receives the transcript state after the turn's main action was appended.
+### Critic Backstop
+
+```
+turns_since_critic_review = turn - last_critic_turn
+if turns_since_critic_review >= 10 AND action.action != "request_critic_review" AND timer.phase in ("mid", "late"):
+  log "[Critic backstop fired — last review was turn <last_critic_turn>]"
+  dispatch critic (same mechanics as Section 3e)
+  last_critic_turn = turn
+```
+
+The critic backstop only fires in `mid` or `late` phase — early-phase audits are premature (groupthink can't form in 2 turns). If a discussion reaches wrap-up without a critic dispatch, the facilitator has failed its job; the skill runner logs it in the final report.
+
+### Why No Fixed Cadence
+
+Observed failure mode (4 transcripts, April 2026): fixed-cadence auto-dispatch interrupted productive sidebars and forced map updates in the middle of contested exchanges. The map update arrived when the group was mid-disagreement; by the time cartographer finished, the momentum was gone.
+
+The facilitator sees the state of the discussion and decides when an audit would land well. This is the same pattern used elsewhere in the skill — process decisions belong to the facilitator, mechanics to the skill runner.
+
+### Coordination Note
+
+If both backstops fire on the same turn: dispatch cartographer first, then critic. Each receives the transcript state after the turn's main action was appended.
+
+### Post-Critic Hook
+See the next subsection for `missing_perspectives` handling — this runs after ANY critic dispatch (backstop, facilitator-initiated, or opening-audit via future extension).
 
 ### Post-Critic Hook: Missing Perspectives Extraction
 
