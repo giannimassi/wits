@@ -184,6 +184,7 @@ A well-behaved facilitator turn is typically 1500-3000 characters. Overflow sign
 | Action | Required fields |
 |--------|-----------------|
 | `directed_turn` | `action`, `target` (agent id), `prompt` |
+| `short_react` | `action`, `target` (agent id), `prompt` |
 | `parallel_round` | `action`, `prompt` |
 | `sidebar` | `action`, `agent_a`, `agent_b`, `topic`, `turns` |
 | `request_map_update` | `action` |
@@ -223,6 +224,28 @@ A well-behaved facilitator turn is typically 1500-3000 characters. Overflow sign
 
 ---
 ```
+
+### 3a-b. `short_react` (brief reaction, ≤60 words)
+
+Same dispatch mechanics as `directed_turn`, but participant is instructed to reply in **60 words or less**. Used by the facilitator when a quick reaction is more natural than a full turn — rebuttals, quick agreements with a push, late-phase tightening.
+
+1. Look up target agent in `team.json`
+2. Build participant context (persona, private notes, transcript, research-if-any) — same as `directed_turn`
+3. Dispatch with a `style: "short_react"` flag in the participant context. The participant prompt template has a conditional block that enforces the cap.
+4. After response: check `len(response.response.split()) <= 75` (15-word buffer for edge cases). If over-cap, log `[short_react over cap: <N> words — Turn <turn>]` and retry ONCE with a stricter prompt prefix: `"Your prior response was too long. Hard cap: 60 words. Respond in one or two short sentences. Nothing else."` If still over-cap, accept the response but note the overrun in the transcript.
+5. Append to transcript:
+   ```markdown
+   ## Turn N — facilitator → <agent-name> [short_react, <phase>, <remaining_human> remaining]
+   **Prompt:** "<facilitator's prompt text>"
+   ### <agent-name> (≤60 words)
+   <response content>
+
+   ---
+   ```
+
+**Why enforce the cap at the skill-runner level, not just in the prompt**: participants routinely overshoot word caps. A single prompt instruction yields 150–200 words in practice. Rejecting-and-retrying once is the only reliable enforcement.
+
+---
 
 ### 3b. `parallel_round`
 

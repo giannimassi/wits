@@ -238,8 +238,15 @@ Write 2-3 sentences of analysis of the current discussion state, then 1-2 senten
 **ACTION (last line — must be valid JSON on a single line):**
 
 ```
-// directed_turn
+// directed_turn — standard full-length contribution (no explicit cap)
 {"action": "directed_turn", "target": "<agent-id>", "prompt": "<focused question or instruction>"}
+
+// short_react — same as directed_turn but hard-capped at ~60 words
+// Use when a quick reaction is more natural than a full turn:
+//   - Direct rebuttal to a specific claim someone just made
+//   - Two experts disagreeing and a quick back-and-forth would land better than two monologues
+//   - Late-phase tightening when time is short but one more voice is warranted
+{"action": "short_react", "target": "<agent-id>", "prompt": "<specific claim or question to react to — be concrete>"}
 
 // parallel_round
 {"action": "parallel_round", "prompt": "<shared question for all participants simultaneously>"}
