@@ -43,6 +43,10 @@ Create a new expert persona and add it to the registry.
 
 Other skills call this protocol during their setup phases. Follow these steps in order.
 
+**Default mode is non-interactive.** Programmatic callers (like `/discuss`) do NOT surface per-expert prompts to the user — the recruiting phase runs silently and returns the assembled personas. The calling skill is responsible for presenting the final roster to the user once, at its own approval surface. This is the contract: recruit is infrastructure, not a user-facing dialog.
+
+Callers can request interactive mode by passing `interactive=true` (e.g. a debugging flow where the user wants to review each pick). Default: `false`.
+
 ### Step 1: Search
 
 ```
@@ -55,6 +59,8 @@ Scan for matching tags and domains. If the INDEX has no hits, also try:
 rg -i "<domain_keyword>" <data-root>/experts/*.md
 ```
 
+If the data root doesn't exist or isn't readable, treat as "no matches" and proceed to Step 5 (Create). Do not prompt.
+
 ### Step 2: Evaluate
 
 For each candidate match, assess fit:
@@ -62,9 +68,17 @@ For each candidate match, assess fit:
 - **Research freshness**: If the expert's Research Context includes specific version-pinned or date-sensitive information, check if it's still accurate (>1 year → flag for refresh).
 - **Thinking style fit**: Does the persona's thinking style match the task? A "risk-averse systems thinker" is the right choice for a migration review but may be too conservative for a brainstorming session.
 
-### Step 3: Offer
+Score each candidate on the three axes. A match is "strong" if domain alignment is clearly present AND research is fresh AND thinking style fits the task context.
 
-Present matches to the caller (or user, if user-invoked):
+### Step 3: Decide (silent in programmatic mode)
+
+**Programmatic mode (`interactive=false`, default):**
+- If at least one candidate is a **strong** match → reuse the best one silently (Step 4).
+- Otherwise → create a new expert silently (Step 5).
+- Never prompt the user between these steps.
+
+**Interactive mode (`interactive=true`, user-invoked commands):**
+Present matches to the user:
 
 > "Found cached expert **Dr. PostgreSQL** (database, postgresql, migration — last used 3 days ago). Reuse, or create a fresh expert for this domain?"
 
@@ -75,11 +89,11 @@ If no match: skip to Step 5.
 When reusing a cached expert:
 1. Load the full file from `<data-root>/experts/<slug>.md`
 2. Extract the Persona Prompt and Research Context sections
-3. Update `last_used` to today's date in the file frontmatter
+3. Update `last_used` to today's date in the file frontmatter (best-effort — skip silently if the data root isn't writable)
 4. Add the calling skill to `consumers[]` if not already present
 5. Return the persona text to the caller
 
-### Step 5: Create (when no suitable match exists)
+### Step 5: Create (when no suitable match exists or data root is empty/unavailable)
 
 1. **Identify the domain**: Narrow and specific beats broad. "PostgreSQL migration specialist" beats "database expert."
 2. **Build persona** using `references/expert-template.md`:
@@ -87,9 +101,11 @@ When reusing a cached expert:
    - Define thinking style, key frameworks, what they look for, blind spots
    - Write the Persona Prompt (100-300 words, second person: "You are...")
 3. **Deep research** (if triggered — see criteria below): dispatch a research subagent, save findings under `## Research Context`
-4. **Save**: write to `<data-root>/experts/<slug>.md`
-5. **Update INDEX.md**: add a row to the Domain Experts table with name, domain, tags, last used, created date
+4. **Save**: write to `<data-root>/experts/<slug>.md` if the data root is writable. If not writable, skip the write silently — the persona is still returned to the caller, it just isn't persisted for reuse.
+5. **Update INDEX.md**: add a row to the Domain Experts table with name, domain, tags, last used, created date (best-effort — skip silently on write failure)
 6. Return the persona text to the caller
+
+Caching is an optimization. A failed or unavailable cache never blocks recruiting and never surfaces to the user in programmatic mode.
 
 ---
 
@@ -123,7 +139,10 @@ Expert data is stored under the **wits data root** (see `references/data-root.md
 
 - Default: `~/.local/share/wits/experts/`
 - Override: set `WITS_DATA_DIR` environment variable
-- Fallback: `/tmp/wits-$USER/experts/` (ephemeral, with warning)
+- Disable caching: set `WITS_CACHE=off` to skip all reads/writes (personas are generated fresh each time)
+- Fallback: `/tmp/wits-$USER/experts/` (ephemeral, silent)
+
+**Caching is a silent optimization.** If the data root is unwritable, missing, or caching is disabled, recruit proceeds without persisting — it never blocks, errors, or prompts the user about cache state. Reads return "no matches" on a missing/empty cache; writes are best-effort.
 
 ```
 <data-root>/experts/
@@ -165,6 +184,7 @@ When calling the protocol programmatically, pass:
 - The domain description (what expertise is needed)
 - The task context (what the expert will be doing — affects thinking style selection)
 - Whether deep research is acceptable (some callers are latency-sensitive)
+- `interactive` (default `false`) — when `false`, recruit makes reuse-vs-create decisions silently and never prompts the user. The calling skill handles user-facing approval at its own layer (e.g. `/discuss` shows the assembled panel once, after all recruitment is done). Set `true` only when the caller genuinely wants per-expert user review.
 
 ---
 

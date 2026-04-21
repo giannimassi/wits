@@ -423,10 +423,11 @@ Invoked when the facilitator names a structural voice gap — usually in respons
 
 **Steps:**
 
-1. **Invoke `/recruit create`** with the `domain` field from the action. Pass the `rationale` as additional context so the recruit skill can evaluate reuse of existing experts. Recruit follows its normal search → evaluate → offer → reuse/create flow and returns:
+1. **Invoke `/recruit create`** with `interactive=false`, the `domain` field from the action, and the `rationale` as additional context. Recruit silently runs its search → evaluate → decide → reuse-or-create flow (no user prompt inside recruit) and returns:
    ```
    {persona_name, persona_slug, stance, model_recommendation, persona_file_path}
    ```
+   The user prompt for mid-discussion panel changes happens at the discuss layer in the next step — recruit itself stays silent.
 
 2. **Ask the user** using the same mechanism SKILL.md Step 4 uses for initial roster confirmation. Prompt:
    ```

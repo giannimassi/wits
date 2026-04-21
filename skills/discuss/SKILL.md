@@ -60,7 +60,7 @@ If the intake agent returns questions, present them to the user. After answers (
 
 2. **Domain coverage** — identify needed voices by domain:
    - From the intake agent's topic brief, extract domain areas
-   - For each domain, call `/recruit` (search → evaluate → offer → reuse/create) to get a primary expert
+   - For each domain, call `/recruit` with `interactive=false` (search → evaluate → decide silently → reuse-or-create) to get a primary expert. Recruit does not prompt the user during this phase — the roster-confirmation step below is the single user-facing approval surface for the whole recruiting pass.
    - Number based on `--size` flag or auto-heuristic (1-2 domains → 1-2 experts, 3-4 → 2-3, 5+ → 3-4+)
 
 3. **Stance diversity** — explicit anti-homogeneity step [NEW]:
@@ -83,12 +83,13 @@ If the intake agent returns questions, present them to the user. After answers (
 5. **Facilitator panel review** [NEW]:
    - Before locking the roster, dispatch the facilitator ONCE with the proposed panel + topic brief.
    - Prompt: "Here's the proposed panel: [list]. Topic: [brief]. Critique it: what stance is missing? Who would disagree with the emerging frame for reasons none of these people would voice? Answer in 3-5 sentences. If the panel is adequate, say 'adequate' and why."
-   - If facilitator flags a gap: recruit one more expert to fill it (call `/recruit create` with the gap description) before proceeding. Max one additional recruit from this step — if the facilitator keeps flagging gaps after that, proceed anyway and note the limitation in the final report.
+   - If facilitator flags a gap: recruit one more expert to fill it by calling `/recruit create` with `interactive=false` and the gap description. Max one additional recruit from this step — if the facilitator keeps flagging gaps after that, proceed anyway and note the limitation in the final report. Still no user prompt at this stage.
 
-6. Present the assembled roster to the user: "Your discussion team: [names + roles + stances + models]"
+6. **Present the assembled roster to the user — the single approval surface:** "Your discussion team: [names + roles + stances + models]"
    - Show the stance distribution explicitly
    - User can say "add <domain>" or "remove <name>" to customize
    - Once confirmed, write `team.json` to `tmp/discuss-<session-id>/`
+   - This is the ONLY user-facing prompt for expert selection. All per-expert decisions (reuse vs create, name, persona details) happen silently inside `/recruit` during steps 2–5. A fresh-install user with no cached experts should see exactly one intake question round plus this one roster confirmation — not N prompts about individual experts.
 
 ### Step 5: Phase 2 — Discussion
 
